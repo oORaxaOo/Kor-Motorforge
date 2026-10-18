@@ -31,6 +31,7 @@ void print_help() {
         << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
         << "  motorforge scene inspect <project> <scene-id> [--json]\n"
         << "  motorforge runtime inspect <project> <scene-id> [--json]\n"
+        << "  motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]\n"
         << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
         << "  motorforge entity update <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --x <number> --y <number> [--json]\n"
         << "  motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> [--json]\n\n"
