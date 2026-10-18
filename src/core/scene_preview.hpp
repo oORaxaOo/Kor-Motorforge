@@ -18,4 +18,11 @@ struct ScenePreviewResult {
     int width = 1280,
     int height = 720);
 
+[[nodiscard]] ScenePreviewResult render_interactive_scene_preview_html(
+    std::string_view project_path,
+    std::string_view scene_id,
+    std::string_view output_path,
+    int width = 1280,
+    int height = 720);
+
 } // namespace motorforge
