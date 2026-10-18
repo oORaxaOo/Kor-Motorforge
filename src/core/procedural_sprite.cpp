@@ -24,7 +24,7 @@ std::string create_svg(std::uint32_t seed, int size) {
     if (state == 0) {
         state = 0xA341316CU;
     }
-    const auto next = [&state]() mutable -> std::uint32_t {
+    auto next = [&state]() -> std::uint32_t {
         state ^= state << 13U;
         state ^= state >> 17U;
         state ^= state << 5U;
