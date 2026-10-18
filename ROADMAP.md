@@ -7,7 +7,6 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Architecture and LLM tool contract
 - [x] CMake-based native project
 - [x] CI build and test workflow
-- [x] First GitHub Actions build and test run verified
 - [x] AI coding-agent instructions
 
 ## M1 — CLI and core contracts
@@ -17,21 +16,24 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Project manifest parser and core validation
 - [x] Safe project initialization with overwrite protection
 - [x] Stable error codes and JSON output tests
-- [ ] Full JSON Schema conformance validation (current validator checks required core invariants)
+- [ ] Full JSON Schema conformance validation
 
-## M2 — Project model
+## M2 — Project and scene model
 - [x] Versioned project manifest
-- [ ] Stable IDs for scenes, entities, components, and assets
-- [x] Schema discovery foundation
+- [x] Versioned scene document and schema
+- [x] Stable scene/entity IDs and component containers
+- [x] Scene list/create/inspect operations
+- [x] Entity creation with transform and optional sprite component
+- [x] Optimistic concurrency checks using scene revision tokens
 - [ ] Schema migration strategy
-- [x] Validation without launching the editor
+- [ ] Entity update/delete transactions
 
 ## M3 — Safe editing API
-- [ ] Read-only inspection commands
+- [x] Read-only scene inspection
+- [x] Revision-checked entity creation
 - [ ] Plan/diff/apply transaction model
-- [ ] Preconditions and optimistic concurrency checks
 - [ ] Undo/rollback journal
-- [ ] JSON Schema for every tool input and output
+- [ ] Full JSON Schema validation for tool inputs and outputs
 
 ## M4 — Minimal runtime
 - [ ] Window and platform abstraction
@@ -50,12 +52,13 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Asset metadata, provenance, and reproducible regeneration
 
 ## M6 — Agent integration
-- [x] CLI command schema discovery foundation
-- [x] Initial stdio MCP adapter and integration test
+- [x] CLI command discovery
+- [x] Stdio MCP adapter and integration tests
 - [x] Workspace path boundary for MCP tools
-- [x] Procedural sprite generation exposed through MCP
-- [ ] Expand tool surface to scene, entity, asset, and runtime operations
-- [ ] Agent-safe permission policies and richer sandbox boundaries
+- [x] Project and procedural asset tools exposed through MCP
+- [x] Scene and entity tools exposed through MCP
+- [ ] Expand tool surface to asset registry and runtime operations
+- [ ] Richer permission policies and sandbox boundaries
 
 ## M7 — Editor and extensibility
 - [ ] Scene hierarchy and inspector
