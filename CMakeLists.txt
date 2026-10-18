@@ -1,23 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
-
-project(KorMotorforge
-    VERSION 0.1.0
-    DESCRIPTION "An LLM-first modular game engine"
-    LANGUAGES CXX
-)
+project(KorMotorforge VERSION 0.1.0 DESCRIPTION "An LLM-first modular game engine" LANGUAGES CXX)
 
 include(CTest)
 include(FetchContent)
-include(GNUInstallDirs)
+
+find_package(ZLIB REQUIRED)
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.12.0
-    GIT_SHALLOW TRUE
-)
+FetchContent_Declare(nlohmann_json GIT_REPOSITORY https://github.com/nlohmann/json.git GIT_TAG v3.12.0 GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(nlohmann_json)
 
 add_library(motorforge_core
@@ -28,19 +19,20 @@ add_library(motorforge_core
     src/core/scene_store.cpp
     src/core/runtime.cpp
     src/core/scene_preview.cpp
+    src/core/asset.cpp
+    src/core/sprite.cpp
+    src/core/atlas.cpp
+    src/core/animation.cpp
 )
 add_library(KorMotorforge::Core ALIAS motorforge_core)
 
 target_compile_features(motorforge_core PUBLIC cxx_std_20)
-target_include_directories(motorforge_core
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-target_link_libraries(motorforge_core PUBLIC nlohmann_json::nlohmann_json)
-target_compile_definitions(motorforge_core
-    PUBLIC MOTORFORGE_VERSION="${PROJECT_VERSION}"
-)
+
+target_include_directories(motorforge_core PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src> $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(motorforge_core PUBLIC nlohmann_json::nlohmann_json ZLIB::ZLIB)
+
+target_compile_definitions(motorforge_core PUBLIC MOTORFORGE_VERSION="${PROJECT_VERSION}")
 
 if(MSVC)
     target_compile_options(motorforge_core PRIVATE /W4 /permissive-)
@@ -48,67 +40,15 @@ else()
     target_compile_options(motorforge_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(motorforge
-    src/cli/main.cpp
-)
+add_executable(motorforge src/cli/main.cpp)
 target_link_libraries(motorforge PRIVATE KorMotorforge::Core)
 
 if(BUILD_TESTING)
-    add_executable(motorforge_tests
-        tests/test_engine_info.cpp
-    )
-    target_link_libraries(motorforge_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_core_contract COMMAND motorforge_tests)
+    add_executable(motorforge_asset_pipeline_tests tests/test_asset_pipeline.cpp)
+    target_link_libraries(motorforge_asset_pipeline_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_asset_pipeline COMMAND motorforge_asset_pipeline_tests)
 
-    add_executable(motorforge_project_validator_tests
-        tests/test_project_validator.cpp
-    )
-    target_link_libraries(motorforge_project_validator_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_project_validator COMMAND motorforge_project_validator_tests)
-
-    add_executable(motorforge_project_creator_tests
-        tests/test_project_creator.cpp
-    )
-    target_link_libraries(motorforge_project_creator_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_project_creator COMMAND motorforge_project_creator_tests)
-
-    add_executable(motorforge_procedural_sprite_tests
-        tests/test_procedural_sprite.cpp
-    )
-    target_link_libraries(motorforge_procedural_sprite_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_procedural_sprite COMMAND motorforge_procedural_sprite_tests)
-
-    add_executable(motorforge_scene_store_tests
-        tests/test_scene_store.cpp
-    )
-    target_link_libraries(motorforge_scene_store_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_scene_store COMMAND motorforge_scene_store_tests)
-
-    add_executable(motorforge_runtime_tests
-        tests/test_runtime.cpp
-    )
-    target_link_libraries(motorforge_runtime_tests PRIVATE KorMotorforge::Core)
-    add_test(NAME motorforge_runtime COMMAND motorforge_runtime_tests)
-
-    add_test(NAME motorforge_cli_help COMMAND motorforge --help)
-    add_test(NAME motorforge_cli_version COMMAND motorforge --version)
-    add_test(NAME motorforge_cli_capabilities COMMAND motorforge capabilities --json)
-    add_test(
-        NAME motorforge_example_project
-        COMMAND motorforge validate ${CMAKE_CURRENT_SOURCE_DIR}/examples/empty-project --json
-    )
-
-    find_package(Python3 COMPONENTS Interpreter QUIET)
-    if(Python3_Interpreter_FOUND)
-        add_test(
-            NAME motorforge_mcp_adapter
-            COMMAND ${Python3_EXECUTABLE}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mcp_server.py
-                    --motorforge $<TARGET_FILE:motorforge>
-        )
-    endif()
+    add_executable(motorforge_sprite_animation_tests tests/test_sprite_animation.cpp)
+    target_link_libraries(motorforge_sprite_animation_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_sprite_animation COMMAND motorforge_sprite_animation_tests)
 endif()
-
-install(TARGETS motorforge
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
