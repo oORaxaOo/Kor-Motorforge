@@ -135,4 +135,87 @@ ScenePreviewResult render_scene_preview_svg(std::string_view project_path,
     Json response{{"contract_version","1"},{"ok",true},{"result",{{"output_path",destination.generic_string()},{"format","svg"},{"width",width},{"height",height},{"entity_count",entities.size()},{"sprite_count",drawn},{"scene_id",scene_id}}}};
     return {true,"Rendered SVG scene preview.",response.dump(2)};
 }
+
+ScenePreviewResult render_interactive_scene_preview_html(std::string_view project_path,
+    std::string_view scene_id, std::string_view output_path, int width, int height) {
+    if (output_path.empty()) return fail("OUTPUT_PATH_REQUIRED", "An output file path is required.");
+    if (std::filesystem::path{output_path}.extension() != ".html")
+        return fail("UNSUPPORTED_OUTPUT_FORMAT", "Interactive scene previews must use the .html extension.");
+
+    const std::filesystem::path destination{output_path};
+    std::error_code ec;
+    if (std::filesystem::exists(destination, ec))
+        return fail("OUTPUT_PATH_EXISTS", "Preview destination already exists; refusing to overwrite it.");
+    if (ec) return fail("OUTPUT_PATH_CHECK_FAILED", "Could not inspect preview destination.");
+
+    auto source_path = destination;
+    source_path += ".source.svg";
+    if (std::filesystem::exists(source_path, ec))
+        return fail("OUTPUT_TEMP_PATH_EXISTS", "Preview source temporary path already exists.");
+    const auto rendered = render_scene_preview_svg(project_path, scene_id, source_path.string(), width, height);
+    if (!rendered.ok) return rendered;
+
+    std::string svg;
+    const bool source_read = read_text(source_path, svg);
+    std::filesystem::remove(source_path, ec);
+    if (!source_read) return fail("PREVIEW_READ_FAILED", "Could not read the generated SVG preview.");
+
+    const std::string encoded_svg = base64(svg);
+    std::ostringstream html;
+    html << "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+         << "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+         << "<title>Kor Motorforge — Interactive Scene Viewer</title><style>"
+         << ":root{color-scheme:dark;font:14px system-ui,sans-serif;background:#101317;color:#e8edf2}"
+         << "*{box-sizing:border-box}body{margin:0;height:100vh;display:grid;grid-template-rows:auto 1fr;overflow:hidden}"
+         << "header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1a1f26;border-bottom:1px solid #343c47;flex-wrap:wrap}"
+         << "strong{letter-spacing:.08em;margin-right:auto}button{background:#29313b;color:#e8edf2;border:1px solid #46515f;border-radius:6px;padding:7px 11px;cursor:pointer}"
+         << "button:hover{background:#374250}#viewport{position:relative;overflow:hidden;touch-action:none;background:#11151a;cursor:grab}"
+         << "#viewport.dragging{cursor:grabbing}#scene{width:100%;height:100%;object-fit:contain;transform-origin:0 0;user-select:none;-webkit-user-drag:none}"
+         << "#help{position:absolute;bottom:12px;left:12px;background:#171b20dd;color:#b8c2ce;padding:7px 10px;border-radius:5px;pointer-events:none}"
+         << "</style></head><body><header><strong>KOR MOTORFORGE / INTERACTIVE SCENE VIEWER</strong>"
+         << "<button id=\"minus\" aria-label=\"Zoom out\">−</button><button id=\"plus\" aria-label=\"Zoom in\">+</button>"
+         << "<button id=\"reset\">Reset view</button><span id=\"zoom\">100%</span></header>"
+         << "<main id=\"viewport\" aria-label=\"Interactive scene preview\"><img id=\"scene\" draggable=\"false\" alt=\"Static scene preview\">"
+         << "<div id=\"help\">Wheel: zoom · Drag: pan · 0: reset · +/−: zoom</div></main>"
+         << "<script>(()=>{const v=document.getElementById('viewport'),i=document.getElementById('scene'),z=document.getElementById('zoom');"
+         << "i.src='data:image/svg+xml;base64," << encoded_svg << "';let scale=1,x=0,y=0,drag=null;"
+         << "function paint(){i.style.transform='translate('+x+'px,'+y+'px) scale('+scale+')';z.textContent=Math.round(scale*100)+'%'}"
+         << "function zoomAt(f,cx=v.clientWidth/2,cy=v.clientHeight/2){const next=Math.max(.2,Math.min(8,scale*f));const k=next/scale;x=cx-(cx-x)*k;y=cy-(cy-y)*k;scale=next;paint()}"
+         << "function reset(){scale=1;x=0;y=0;paint()}document.getElementById('plus').onclick=()=>zoomAt(1.2);"
+         << "document.getElementById('minus').onclick=()=>zoomAt(1/1.2);document.getElementById('reset').onclick=reset;"
+         << "v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});"
+         << "v.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={x:e.clientX-x,y:e.clientY-y,id:e.pointerId};v.setPointerCapture(e.pointerId);v.classList.add('dragging')});"
+         << "v.addEventListener('pointermove',e=>{if(!drag)return;x=e.clientX-drag.x;y=e.clientY-drag.y;paint()});"
+         << "function end(){drag=null;v.classList.remove('dragging')}v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end);"
+         << "window.addEventListener('keydown',e=>{if(e.key==='0')reset();else if(e.key==='+'||e.key==='=')zoomAt(1.2);else if(e.key==='-')zoomAt(1/1.2)});paint()})();</script></body></html>\n";
+
+    auto temporary = destination;
+    temporary += ".motorforge-tmp";
+    if (std::filesystem::exists(temporary, ec))
+        return fail("OUTPUT_TEMP_PATH_EXISTS", "Preview temporary path already exists.");
+    {
+        std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+        if (!out) return fail("PREVIEW_WRITE_FAILED", "Could not open temporary HTML preview.");
+        out << html.str();
+        out.close();
+        if (!out) {
+            std::filesystem::remove(temporary, ec);
+            return fail("PREVIEW_WRITE_FAILED", "Could not write complete HTML preview.");
+        }
+    }
+    std::filesystem::rename(temporary, destination, ec);
+    if (ec) {
+        std::filesystem::remove(temporary, ec);
+        return fail("PREVIEW_COMMIT_FAILED", "Could not finalize HTML preview file.");
+    }
+
+    const Json svg_result = Json::parse(rendered.json);
+    Json response{{"contract_version","1"},{"ok",true},{"result",{
+        {"output_path",destination.generic_string()},{"format","html"},{"width",width},{"height",height},
+        {"entity_count",svg_result["result"]["entity_count"]},
+        {"sprite_count",svg_result["result"]["sprite_count"]},{"scene_id",scene_id},
+        {"controls",Json::array({"zoom","pan","reset"})}}}};
+    return {true, "Rendered interactive HTML scene viewer.", response.dump(2)};
+}
+
 } // namespace motorforge
