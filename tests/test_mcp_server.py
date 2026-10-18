@@ -20,6 +20,29 @@ def request(request_id: int, method: str, params: dict | None = None) -> dict:
     }
 
 
+def run_server(server: Path, executable: Path, workspace: Path, messages: list[dict]) -> dict[int, dict]:
+    completed = subprocess.run(
+        [
+            sys.executable, str(server),
+            "--motorforge", str(executable.resolve()),
+            "--workspace", str(workspace),
+        ],
+        input="\n".join(json.dumps(message) for message in messages) + "\n",
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(f"MCP server exited {completed.returncode}: {completed.stderr}")
+    responses = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
+    return {response["id"]: response for response in responses}
+
+
+def tool_payload(response: dict) -> dict:
+    return json.loads(response["result"]["content"][0]["text"])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--motorforge", required=True, type=Path)
@@ -28,7 +51,7 @@ def main() -> int:
     server = Path(__file__).resolve().parents[1] / "tools" / "mcp_server.py"
     with tempfile.TemporaryDirectory(prefix="motorforge-mcp-test-") as temporary:
         workspace = Path(temporary)
-        messages = [
+        first_batch = [
             request(1, "initialize", {
                 "protocolVersion": "2025-11-25",
                 "capabilities": {},
@@ -45,60 +68,108 @@ def main() -> int:
                 "arguments": {"path": "sample-project"},
             }),
             request(5, "tools/call", {
+                "name": "scene_create",
+                "arguments": {"project_path": "sample-project", "name": "Main Scene"},
+            }),
+            request(6, "tools/call", {
+                "name": "scene_inspect",
+                "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
+            }),
+            request(7, "tools/call", {
                 "name": "generate_procedural_sprite",
                 "arguments": {"path": "sprites/factory.svg", "seed": 42, "size": 64},
             }),
-            request(6, "tools/call", {
+            request(8, "tools/call", {
                 "name": "validate_project",
                 "arguments": {"path": "../outside-project"},
             }),
         ]
-        completed = subprocess.run(
-            [
-                sys.executable, str(server),
-                "--motorforge", str(args.motorforge.resolve()),
-                "--workspace", str(workspace),
-            ],
-            input="\n".join(json.dumps(message) for message in messages) + "\n",
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
+        first = run_server(server, args.motorforge, workspace, first_batch)
+        assert set(first) == {1, 2, 3, 4, 5, 6, 7, 8}, f"Unexpected first MCP responses: {first}"
+
+        scene_revision = tool_payload(first[6])["revision"]
+        second_batch = [
+            request(9, "tools/call", {
+                "name": "entity_create",
+                "arguments": {
+                    "project_path": "sample-project",
+                    "scene_id": "main-scene",
+                    "id": "factory",
+                    "name": "Factory",
+                    "expected_revision": scene_revision,
+                    "x": 12.5,
+                    "y": 7,
+                    "sprite_asset": "sprites/factory.svg",
+                },
+            }),
+            request(10, "tools/call", {
+                "name": "entity_create",
+                "arguments": {
+                    "project_path": "sample-project",
+                    "scene_id": "main-scene",
+                    "id": "stale-entity",
+                    "name": "Stale Entity",
+                    "expected_revision": scene_revision,
+                },
+            }),
+            request(11, "tools/call", {
+                "name": "scene_inspect",
+                "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
+            }),
+            request(12, "tools/call", {
+                "name": "scene_list",
+                "arguments": {"project_path": "sample-project"},
+            }),
+        ]
+        second = run_server(server, args.motorforge, workspace, second_batch)
         generated_svg = (workspace / "sprites" / "factory.svg").read_text(encoding="utf-8")
 
-    if completed.returncode != 0:
-        raise AssertionError(f"MCP server exited {completed.returncode}: {completed.stderr}")
-
-    responses = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
-    by_id = {response["id"]: response for response in responses}
-    assert set(by_id) == {1, 2, 3, 4, 5, 6}, f"Unexpected MCP responses: {responses}"
-
-    initialized = by_id[1]["result"]
+    initialized = first[1]["result"]
     assert initialized["serverInfo"]["name"] == "kor-motorforge"
     assert initialized["protocolVersion"] == "2025-11-25"
 
-    tools = by_id[2]["result"]["tools"]
+    tools = first[2]["result"]["tools"]
     tool_names = {tool["name"] for tool in tools}
-    assert {"motorforge_capabilities", "validate_project", "create_project", "generate_procedural_sprite"} <= tool_names
+    expected_tools = {
+        "motorforge_capabilities", "validate_project", "create_project",
+        "generate_procedural_sprite", "scene_list", "scene_create",
+        "scene_inspect", "entity_create",
+    }
+    assert expected_tools <= tool_names
 
-    created = json.loads(by_id[3]["result"]["content"][0]["text"])
+    created = tool_payload(first[3])
     assert created["ok"] is True
     assert created["project"]["id"] == "mcp-sample-project"
+    assert tool_payload(first[4])["ok"] is True
 
-    validated = json.loads(by_id[4]["result"]["content"][0]["text"])
-    assert validated["ok"] is True
+    scene_created = tool_payload(first[5])
+    assert scene_created["ok"] is True
+    assert scene_created["result"]["scene"]["id"] == "main-scene"
+    assert tool_payload(first[6])["revision"] == scene_revision
 
-    generated = json.loads(by_id[5]["result"]["content"][0]["text"])
+    generated = tool_payload(first[7])
     assert generated["ok"] is True
     assert generated["asset"]["seed"] == 42
     assert generated_svg.startswith("<svg ")
     assert "generator=industrial-building-v1; seed=42" in generated_svg
 
-    escaped = by_id[6]["result"]
-    assert escaped["isError"] is True
-    escaped_payload = json.loads(escaped["content"][0]["text"])
-    assert escaped_payload["error"]["code"] == "PATH_OUTSIDE_WORKSPACE"
+    escaped = tool_payload(first[8])
+    assert escaped["error"]["code"] == "PATH_OUTSIDE_WORKSPACE"
+
+    assert second[9]["result"]["isError"] is False
+    entity_result = tool_payload(second[9])
+    assert entity_result["ok"] is True
+    assert entity_result["result"]["entity"]["id"] == "factory"
+
+    assert second[10]["result"]["isError"] is True
+    stale_result = tool_payload(second[10])
+    assert stale_result["errors"][0]["code"] == "REVISION_CONFLICT"
+
+    inspected = tool_payload(second[11])
+    assert inspected["ok"] is True
+    assert len(inspected["result"]["entities"]) == 1
+    listed = tool_payload(second[12])
+    assert len(listed["result"]["scenes"]) == 1
 
     print("MCP adapter integration tests passed.")
     return 0
