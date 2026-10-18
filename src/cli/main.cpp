@@ -10,6 +10,8 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -30,6 +32,7 @@ void print_help() {
         << "  motorforge scene list <project> [--json]\n"
         << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
         << "  motorforge scene inspect <project> <scene-id> [--json]\n"
+        << "  motorforge scene patch <project> <scene-id> --patch <file.json> --expected-revision <revision> [--dry-run] [--json]\n"
         << "  motorforge runtime inspect <project> <scene-id> [--json]\n"
         << "  motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]\n"
         << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
@@ -212,6 +215,43 @@ int main(int argc, char* argv[]) {
                 }
             }
             result = motorforge::create_scene(project, name, id);
+        } else if (action == "patch") {
+            if (argc < 5) {
+                std::cerr << "error[ARGUMENT_REQUIRED]: scene patch requires a scene ID and patch file.\\n";
+                return 2;
+            }
+            const std::string scene_id{argv[4]};
+            std::string patch_path;
+            std::string expected_revision;
+            bool dry_run = false;
+            for (int index = 5; index < argc; ++index) {
+                const std::string_view option{argv[index]};
+                if (option == "--json") json_output = true;
+                else if (option == "--dry-run") dry_run = true;
+                else if (option == "--patch" && index + 1 < argc) patch_path = argv[++index];
+                else if (option == "--expected-revision" && index + 1 < argc) expected_revision = argv[++index];
+                else {
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete scene patch option '" << option << "'\\n";
+                    return 2;
+                }
+            }
+            if (patch_path.empty() || expected_revision.empty()) {
+                std::cerr << "error[ARGUMENT_REQUIRED]: --patch and --expected-revision are required.\\n";
+                return 2;
+            }
+            std::ifstream patch_file{patch_path, std::ios::binary};
+            if (!patch_file) {
+                std::cerr << "error[PATCH_FILE_READ_FAILED]: could not open patch file.\\n";
+                return 2;
+            }
+            std::ostringstream patch_buffer;
+            patch_buffer << patch_file.rdbuf();
+            if (patch_file.bad() || patch_buffer.str().size() > 1024 * 1024) {
+                std::cerr << "error[PATCH_FILE_READ_FAILED]: patch file could not be read or exceeds 1 MiB.\\n";
+                return 2;
+            }
+            result = motorforge::apply_scene_patch(project, scene_id, patch_buffer.str(),
+                                                    expected_revision, dry_run);
         } else if (action == "inspect") {
             if (argc < 5) {
                 std::cerr << "error[ARGUMENT_REQUIRED]: scene inspect requires a scene ID.\n";
