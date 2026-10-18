@@ -26,6 +26,7 @@ add_library(motorforge_core
     src/core/project_creator.cpp
     src/core/procedural_sprite.cpp
     src/core/scene_store.cpp
+    src/core/runtime.cpp
 )
 add_library(KorMotorforge::Core ALIAS motorforge_core)
 
