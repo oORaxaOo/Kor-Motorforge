@@ -21,6 +21,7 @@ This document defines the contract all agent-facing interfaces must follow. The 
 - `scene list <project> --json`: list scene IDs, paths, and revision tokens.
 - `scene create <project> --name <name> [--id <id>] --json`: create a scene document.
 - `scene inspect <project> <scene-id> --json`: inspect scene data and obtain its revision token.
+- `scene patch <project> <scene-id> --patch <file.json> --expected-revision <revision> [--dry-run] --json`: validate a batch of entity operations, return a structured before/after diff, and atomically apply it when dry-run is disabled.
 - `runtime inspect <project> <scene-id> --json`: load a scene headlessly, validate transforms, and resolve supported sprite assets.
 - `preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] --json`: export a portable static SVG scene preview without overwriting an existing file.
 - `preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] --json`: export a self-contained HTML viewer with pan, zoom, and reset controls.
@@ -36,6 +37,16 @@ The `scene inspect` response includes a deterministic revision token calculated 
 
 The revision hash is a concurrency token, not a cryptographic security primitive.
 
+### Atomic scene patch
+
+The patch document is a JSON object with one `operations` array (1–256 operations, at most 1 MiB). Supported operations:
+
+- `{"op":"create","entity":{"id":"...","name":"...","components":{"transform":{"x":0,"y":0,"rotation":0,"scale_x":1,"scale_y":1}}}}`
+- `{"op":"update","id":"...","set":{"name":"...","transform":{"x":10,"rotation":90}}}` (name or transform may be omitted; transform updates are partial).
+- `{"op":"delete","id":"..."}`
+
+Each entity ID may appear only once in a patch. All operations are validated against a copy of the scene before a single atomic file replacement. A failed operation never commits earlier operations. `--dry-run` returns `changes`, `revision_before`, and `planned_revision` without writing; apply with the same expected revision, and inspect again after any `REVISION_CONFLICT`. Sprite asset paths for created entities must resolve to existing regular files inside the project.
+
 ## MCP tools
 
 The stdio adapter exposes:
@@ -47,6 +58,7 @@ The stdio adapter exposes:
 - `scene_list`
 - `scene_create`
 - `scene_inspect`
+- `scene_patch`
 - `entity_create`
 - `entity_update`
 - `entity_delete`
@@ -64,7 +76,7 @@ python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-pro
 
 ## Validation limitations
 
-The project and scene validators enforce core structural invariants. Full JSON Schema conformance validation, scene migration tooling, persistent undo/rollback, native pixel rendering, and an interactive graphical runtime are future work. The SVG and HTML previews are static exports with embedded SVG assets; the HTML viewer supports navigation only and does not edit scenes or run a simulation loop. The schemas are published at `schemas/project.schema.json` and `schemas/scene.schema.json`.
+The project and scene validators enforce core structural invariants. Full JSON Schema conformance validation, scene migration tooling, persistent undo/rollback, native pixel rendering, and an interactive graphical runtime are future work. The SVG and HTML previews are static exports with embedded SVG assets; the optional HTML inspector is diagnostic only and does not persist edits or run a simulation loop. Agent workflows should use machine-readable CLI/MCP tools and the atomic scene patch API. The schemas are published at `schemas/project.schema.json` and `schemas/scene.schema.json`.
 
 ## Tool design checklist
 
