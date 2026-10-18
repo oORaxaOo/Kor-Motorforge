@@ -140,6 +140,22 @@ TOOLS: list[dict[str, Any]] = [
         }
     },
     {
+        "name": "scene_preview_interactive",
+        "description": "Export a self-contained interactive HTML scene viewer with zoom, pan, and reset controls.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+                "output_path": {"type": "string", "minLength": 1},
+                "width": {"type": "integer", "minimum": 320, "maximum": 4096},
+                "height": {"type": "integer", "minimum": 240, "maximum": 4096}
+            },
+            "required": ["project_path", "scene_id", "output_path"],
+            "additionalProperties": False
+        }
+    },
+    {
         "name": "scene_preview_render",
         "description": "Render a portable SVG preview of a scene with a dark grid, world axes, entity markers, and embedded SVG sprites.",
         "inputSchema": {
