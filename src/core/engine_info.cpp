@@ -42,6 +42,13 @@ std::string_view capabilities_json() noexcept {
       "description": "List supported commands in machine-readable JSON.",
       "mutates_state": false,
       "status": "implemented"
+    },
+    {
+      "name": "validate",
+      "invocation": "motorforge validate <project-directory-or-project.json> --json",
+      "description": "Validate core project manifest invariants and return structured diagnostics.",
+      "mutates_state": false,
+      "status": "implemented"
     }
   ]
 })json";
