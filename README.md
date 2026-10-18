@@ -16,11 +16,12 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Versioned scene documents with scene list/create/inspect operations.
 - Entity creation, transform/name updates, and deletion with optimistic revision checks; stale writes are rejected.
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
-- A stdio MCP adapter exposing project, scene, entity, validation, and procedural asset tools.
+- A headless runtime that loads scenes, validates transforms, resolves SVG sprite assets, and returns a machine-readable runtime snapshot.
+- A stdio MCP adapter exposing project, scene, entity, runtime inspection, validation, and procedural asset tools.
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The scene editor currently operates on versioned JSON documents; it is not yet a graphical editor or game renderer. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
+The headless runtime loads and validates scene state but does not yet open a window or draw pixels. The project is not yet a graphical editor or game renderer. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
@@ -41,6 +42,7 @@ ctest --test-dir build --output-on-failure
 ./build/motorforge spritegen ./MyGame/assets/factory.svg --seed 42 --json
 ./build/motorforge scene create ./MyGame --name "Main Scene" --json
 ./build/motorforge scene inspect ./MyGame main-scene --json
+./build/motorforge runtime inspect ./MyGame main-scene --json
 ```
 
 Entity mutations require the current scene revision returned by `scene inspect`:
@@ -69,7 +71,7 @@ The adapter uses the Model Context Protocol over standard input/output and Pytho
 python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-projects
 ```
 
-Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes project creation and validation, scene list/create/inspect, revision-checked entity create/update/delete operations, and procedural sprite generation. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
+Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes project creation and validation, scene list/create/inspect, revision-checked entity create/update/delete operations, headless runtime inspection, and procedural sprite generation. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
 
 ## Planned milestones
 
