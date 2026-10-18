@@ -107,6 +107,13 @@ std::string_view capabilities_json() noexcept {
       "status": "implemented"
     },
     {
+      "name": "preview.interactive",
+      "invocation": "motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] --json",
+      "description": "Export a self-contained HTML scene viewer with pointer-based pan and zoom controls.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
       "name": "preview.render",
       "invocation": "motorforge preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] --json",
       "description": "Export a portable static SVG scene preview with embedded sprite assets.",
