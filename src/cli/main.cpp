@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
 
     if (command == "scene") {
         if (argc < 4) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge scene <list|create|inspect> <project> ...'\\n";
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge scene <list|create|inspect> <project> ...'\n";
             return 2;
         }
 
@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
                 if (std::string_view{argv[index]} == "--json") {
                     json_output = true;
                 } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\\n";
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\n";
                     return 2;
                 }
             }
@@ -201,14 +201,14 @@ int main(int argc, char* argv[]) {
                 } else if (option == "--id" && index + 1 < argc) {
                     id = argv[++index];
                 } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\\n";
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
                     return 2;
                 }
             }
             result = motorforge::create_scene(project, name, id);
         } else if (action == "inspect") {
             if (argc < 5) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: scene inspect requires a scene ID.\\n";
+                std::cerr << "error[ARGUMENT_REQUIRED]: scene inspect requires a scene ID.\n";
                 return 2;
             }
             const std::string scene_id{argv[4]};
@@ -216,13 +216,13 @@ int main(int argc, char* argv[]) {
                 if (std::string_view{argv[index]} == "--json") {
                     json_output = true;
                 } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\\n";
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\n";
                     return 2;
                 }
             }
             result = motorforge::inspect_scene(project, scene_id);
         } else {
-            std::cerr << "error[UNKNOWN_SCENE_ACTION]: unknown scene action '" << action << "'.\\n";
+            std::cerr << "error[UNKNOWN_SCENE_ACTION]: unknown scene action '" << action << "'.\n";
             return 2;
         }
         return report_scene_result(result, json_output);
@@ -230,7 +230,7 @@ int main(int argc, char* argv[]) {
 
     if (command == "entity") {
         if (argc < 5 || std::string_view{argv[2]} != "create") {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--json]'.\\n";
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--json]'.\n";
             return 2;
         }
 
@@ -258,16 +258,16 @@ int main(int argc, char* argv[]) {
                 sprite = argv[++index];
             } else if (option == "--x" && index + 1 < argc) {
                 if (!parse_number(argv[++index], x)) {
-                    std::cerr << "error[INVALID_TRANSFORM]: x must be a finite number.\\n";
+                    std::cerr << "error[INVALID_TRANSFORM]: x must be a finite number.\n";
                     return 2;
                 }
             } else if (option == "--y" && index + 1 < argc) {
                 if (!parse_number(argv[++index], y)) {
-                    std::cerr << "error[INVALID_TRANSFORM]: y must be a finite number.\\n";
+                    std::cerr << "error[INVALID_TRANSFORM]: y must be a finite number.\n";
                     return 2;
                 }
             } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\\n";
+                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
                 return 2;
             }
         }
