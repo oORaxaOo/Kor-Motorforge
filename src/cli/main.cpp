@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
             result = motorforge::create_scene(project, name, id);
         } else if (action == "patch") {
             if (argc < 5) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: scene patch requires a scene ID and patch file.\\n";
+                std::cerr << "error[ARGUMENT_REQUIRED]: scene patch requires a scene ID and patch file.\n";
                 return 2;
             }
             const std::string scene_id{argv[4]};
@@ -231,23 +231,23 @@ int main(int argc, char* argv[]) {
                 else if (option == "--patch" && index + 1 < argc) patch_path = argv[++index];
                 else if (option == "--expected-revision" && index + 1 < argc) expected_revision = argv[++index];
                 else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete scene patch option '" << option << "'\\n";
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete scene patch option '" << option << "'\n";
                     return 2;
                 }
             }
             if (patch_path.empty() || expected_revision.empty()) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: --patch and --expected-revision are required.\\n";
+                std::cerr << "error[ARGUMENT_REQUIRED]: --patch and --expected-revision are required.\n";
                 return 2;
             }
             std::ifstream patch_file{patch_path, std::ios::binary};
             if (!patch_file) {
-                std::cerr << "error[PATCH_FILE_READ_FAILED]: could not open patch file.\\n";
+                std::cerr << "error[PATCH_FILE_READ_FAILED]: could not open patch file.\n";
                 return 2;
             }
             std::ostringstream patch_buffer;
             patch_buffer << patch_file.rdbuf();
             if (patch_file.bad() || patch_buffer.str().size() > 1024 * 1024) {
-                std::cerr << "error[PATCH_FILE_READ_FAILED]: patch file could not be read or exceeds 1 MiB.\\n";
+                std::cerr << "error[PATCH_FILE_READ_FAILED]: patch file could not be read or exceeds 1 MiB.\n";
                 return 2;
             }
             result = motorforge::apply_scene_patch(project, scene_id, patch_buffer.str(),
