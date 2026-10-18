@@ -31,6 +31,7 @@ void print_help() {
         << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
         << "  motorforge scene inspect <project> <scene-id> [--json]\n"
         << "  motorforge runtime inspect <project> <scene-id> [--json]\n"
+        << "  motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]\n"
         << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
         << "  motorforge entity update <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --x <number> --y <number> [--json]\n"
         << "  motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> [--json]\n\n"
@@ -245,6 +246,38 @@ int main(int argc, char* argv[]) {
         }
         const auto result = motorforge::inspect_runtime(argv[3], argv[4]);
         return report_scene_result({result.ok, result.message, result.json, {}}, json_output);
+    }
+
+    if (command == "preview" && argc >= 3 && std::string_view{argv[2]} == "interactive") {
+        if (argc < 7) {
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]'\n";
+            return 2;
+        }
+        std::string output;
+        int width = 1280, height = 720;
+        bool json_output = false;
+        for (int index = 5; index < argc; ++index) {
+            const std::string_view option{argv[index]};
+            if (option == "--json") json_output = true;
+            else if (option == "--output" && index + 1 < argc) output = argv[++index];
+            else if (option == "--width" && index + 1 < argc) {
+                if (!parse_integer(std::string_view{argv[++index]}, width)) {
+                    std::cerr << "error[INVALID_PREVIEW_SIZE]: width must be an integer.\n"; return 2;
+                }
+            } else if (option == "--height" && index + 1 < argc) {
+                if (!parse_integer(std::string_view{argv[++index]}, height)) {
+                    std::cerr << "error[INVALID_PREVIEW_SIZE]: height must be an integer.\n"; return 2;
+                }
+            } else {
+                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete preview option '" << option << "'\n";
+                return 2;
+            }
+        }
+        const auto result = motorforge::render_interactive_scene_preview_html(argv[3], argv[4], output, width, height);
+        if (json_output) std::cout << result.json << '\n';
+        else if (result.ok) std::cout << result.message << " Output: " << output << '\n';
+        else std::cerr << result.message << '\n';
+        return result.ok ? 0 : 1;
     }
 
     if (command == "preview") {

@@ -17,12 +17,13 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Entity creation, transform/name updates, and deletion with optimistic revision checks; stale writes are rejected.
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
 - A headless runtime that loads scenes, validates transforms, resolves SVG sprite assets, and returns a machine-readable runtime snapshot.
-- A portable SVG scene-preview renderer with world axes, grid, entity markers, transform placement, and embedded sprite assets; preview files open in a web browser without a native renderer dependency.
+- A portable SVG scene-preview renderer with world axes, grid, entity markers, transform placement, and embedded sprite assets.
+- A self-contained interactive HTML scene viewer with pointer-based pan, mouse-wheel zoom, keyboard shortcuts, and reset controls; no server or browser dependencies are required.
 - A stdio MCP adapter exposing project, scene, entity, runtime inspection, validation, and procedural asset tools.
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The runtime still has no native game window, real-time simulation loop, or interactive graphical editor. The SVG preview is a static scene snapshot, not a real-time renderer. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
+The runtime still has no native game window, real-time simulation loop, or interactive graphical editor. Both preview formats are static scene snapshots, not real-time renderers. The HTML viewer adds navigation controls but does not edit scene data. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
@@ -44,6 +45,7 @@ ctest --test-dir build --output-on-failure
 ./build/motorforge scene create ./MyGame --name "Main Scene" --json
 ./build/motorforge scene inspect ./MyGame main-scene --json
 ./build/motorforge runtime inspect ./MyGame main-scene --json
+./build/motorforge preview interactive ./MyGame main-scene --output ./MyGame/scene-viewer.html --json
 ./build/motorforge preview render ./MyGame main-scene --output ./MyGame/scene-preview.svg --json
 ```
 

@@ -42,6 +42,7 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Input mapping
 - [x] Headless scene loading and runtime snapshot validation
 - [x] Portable static SVG scene preview with embedded SVG sprites
+- [x] Self-contained HTML viewer with pan, zoom, and reset controls
 - [ ] Native windowed scene preview and pixel rendering
 
 ## M5 — Procedural content

@@ -70,6 +70,22 @@ int main() {
     require(Json::parse(overwrite.json)["errors"][0]["code"] == "OUTPUT_PATH_EXISTS",
             "preview overwrite refusal should use a stable error");
 
+    const auto interactive_path = root / "interactive.html";
+    const auto interactive = motorforge::render_interactive_scene_preview_html(
+        project.string(), "main-scene", interactive_path.string(), 800, 600);
+    require(interactive.ok, "interactive HTML preview should render");
+    const auto interactive_json = Json::parse(interactive.json);
+    require(interactive_json["result"]["format"] == "html", "interactive preview should report HTML format");
+    require(interactive_json["result"]["controls"].size() == 3, "interactive preview should advertise zoom, pan, and reset");
+    std::ifstream interactive_file(interactive_path);
+    const std::string interactive_text((std::istreambuf_iterator<char>(interactive_file)),
+                                       std::istreambuf_iterator<char>());
+    require(interactive_text.find("data:image/svg+xml;base64,") != std::string::npos,
+            "interactive HTML should embed the SVG and its sprites");
+    require(interactive_text.find("pointermove") != std::string::npos &&
+            interactive_text.find("zoomAt") != std::string::npos,
+            "interactive viewer should provide pan and zoom handlers");
+
     const auto missing = motorforge::inspect_runtime(project.string(), "absent-scene");
     require(!missing.ok, "runtime should reject missing scenes");
     require(parse(missing)["errors"][0]["code"] == "SCENE_NOT_FOUND", "missing scene error should be stable");

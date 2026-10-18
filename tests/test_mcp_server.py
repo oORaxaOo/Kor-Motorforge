@@ -174,6 +174,23 @@ def main() -> int:
         assert preview_payload["result"]["format"] == "svg"
         assert (workspace / "sample-project" / "scene-preview.svg").read_text(encoding="utf-8").startswith("<svg")
 
+        interactive_batch = [
+            request(19, "tools/call", {
+                "name": "scene_preview_interactive",
+                "arguments": {
+                    "project_path": "sample-project", "scene_id": "main-scene",
+                    "output_path": "sample-project/scene-viewer.html", "width": 640, "height": 480,
+                },
+            }),
+        ]
+        interactive_responses = run_server(server, args.motorforge, workspace, interactive_batch)
+        interactive_payload = tool_payload(interactive_responses[19])
+        assert interactive_responses[19]["result"]["isError"] is False
+        assert interactive_payload["result"]["format"] == "html"
+        viewer = (workspace / "sample-project" / "scene-viewer.html").read_text(encoding="utf-8")
+        assert viewer.startswith("<!doctype html>")
+        assert "zoomAt" in viewer and "pointermove" in viewer
+
         deleted_batch = [
             request(15, "tools/call", {
                 "name": "entity_delete",
@@ -204,7 +221,7 @@ def main() -> int:
     expected_tools = {
         "motorforge_capabilities", "validate_project", "create_project",
         "generate_procedural_sprite", "scene_list", "scene_create",
-        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect", "scene_preview_render",
+        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect", "scene_preview_render", "scene_preview_interactive",
     }
     assert expected_tools <= tool_names
 
