@@ -45,6 +45,10 @@ def main() -> int:
                 "arguments": {"path": "sample-project"},
             }),
             request(5, "tools/call", {
+                "name": "generate_procedural_sprite",
+                "arguments": {"path": "sprites/factory.svg", "seed": 42, "size": 64},
+            }),
+            request(6, "tools/call", {
                 "name": "validate_project",
                 "arguments": {"path": "../outside-project"},
             }),
@@ -61,13 +65,14 @@ def main() -> int:
             timeout=30,
             check=False,
         )
+        generated_svg = (workspace / "sprites" / "factory.svg").read_text(encoding="utf-8")
 
     if completed.returncode != 0:
         raise AssertionError(f"MCP server exited {completed.returncode}: {completed.stderr}")
 
     responses = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
     by_id = {response["id"]: response for response in responses}
-    assert set(by_id) == {1, 2, 3, 4, 5}, f"Unexpected MCP responses: {responses}"
+    assert set(by_id) == {1, 2, 3, 4, 5, 6}, f"Unexpected MCP responses: {responses}"
 
     initialized = by_id[1]["result"]
     assert initialized["serverInfo"]["name"] == "kor-motorforge"
@@ -75,7 +80,7 @@ def main() -> int:
 
     tools = by_id[2]["result"]["tools"]
     tool_names = {tool["name"] for tool in tools}
-    assert {"motorforge_capabilities", "validate_project", "create_project"} <= tool_names
+    assert {"motorforge_capabilities", "validate_project", "create_project", "generate_procedural_sprite"} <= tool_names
 
     created = json.loads(by_id[3]["result"]["content"][0]["text"])
     assert created["ok"] is True
@@ -84,7 +89,13 @@ def main() -> int:
     validated = json.loads(by_id[4]["result"]["content"][0]["text"])
     assert validated["ok"] is True
 
-    escaped = by_id[5]["result"]
+    generated = json.loads(by_id[5]["result"]["content"][0]["text"])
+    assert generated["ok"] is True
+    assert generated["asset"]["seed"] == 42
+    assert generated_svg.startswith("<svg ")
+    assert "generator=industrial-building-v1; seed=42" in generated_svg
+
+    escaped = by_id[6]["result"]
     assert escaped["isError"] is True
     escaped_payload = json.loads(escaped["content"][0]["text"])
     assert escaped_payload["error"]["code"] == "PATH_OUTSIDE_WORKSPACE"
