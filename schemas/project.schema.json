@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kor-motorforge.dev/schemas/project.schema.json",
+  "title": "Kor Motorforge Project",
+  "description": "Version 1 project manifest. Runtime and editor data will reference this stable project identity.",
+  "type": "object",
+  "required": ["schema_version", "project", "engine"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Project manifest schema version."
+    },
+    "project": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "Stable machine-readable project identifier."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable project name."
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "required": ["min_version"],
+      "properties": {
+        "min_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Minimum compatible Motorforge version in MAJOR.MINOR.PATCH form."
+        }
+      },
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "enum": ["2d", "3d"]
+        },
+        "fixed_timestep_hz": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
