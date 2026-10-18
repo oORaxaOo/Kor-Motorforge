@@ -446,6 +446,28 @@ SceneCommandResult create_entity(std::string_view project_path,
                 return failure("INVALID_ASSET_PATH", "Sprite asset path must not escape the project directory.");
             }
         }
+
+        std::error_code path_error;
+        const auto canonical_project = std::filesystem::weakly_canonical(project, path_error);
+        if (path_error) {
+            return failure("PROJECT_PATH_RESOLUTION_FAILED",
+                           "Could not resolve project directory for asset validation.");
+        }
+        const auto canonical_asset = std::filesystem::weakly_canonical(project / asset, path_error);
+        if (path_error) {
+            return failure("INVALID_ASSET_PATH", "Could not resolve sprite asset path.");
+        }
+        const auto relative_asset = canonical_asset.lexically_relative(canonical_project);
+        if (relative_asset.empty() || relative_asset.is_absolute() ||
+            relative_asset.begin()->string() == "..") {
+            return failure("INVALID_ASSET_PATH",
+                           "Sprite asset path resolves outside the project directory.");
+        }
+        if (!std::filesystem::is_regular_file(canonical_asset, path_error) || path_error) {
+            return failure("ASSET_NOT_FOUND",
+                           "Referenced sprite asset does not exist as a regular file.",
+                           (project / asset).generic_string());
+        }
     }
 
     const auto path = scene_path(project, scene_id);
