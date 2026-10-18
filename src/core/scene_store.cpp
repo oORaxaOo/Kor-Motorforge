@@ -532,4 +532,122 @@ SceneCommandResult create_entity(std::string_view project_path,
                     {"path", path.generic_string()}}, revision);
 }
 
+
+
+namespace {
+
+SceneCommandResult mutate_entity(std::string_view project_path,
+                                 std::string_view scene_id,
+                                 std::string_view entity_id,
+                                 std::string_view expected_revision,
+                                 bool remove_entity,
+                                 std::string_view name,
+                                 double x, double y) {
+    const std::filesystem::path project{project_path};
+    SceneCommandResult project_error;
+    if (!validate_project_root(project, project_error)) {
+        return project_error;
+    }
+    if (!valid_id(scene_id)) {
+        return failure("INVALID_SCENE_ID", "Scene ID format is invalid.");
+    }
+    if (!valid_id(entity_id)) {
+        return failure("INVALID_ENTITY_ID", "Entity ID format is invalid.");
+    }
+    if (expected_revision.empty()) {
+        return failure("EXPECTED_REVISION_REQUIRED",
+                       "Mutating a scene requires the revision returned by scene inspect.");
+    }
+    if (!remove_entity && (name.empty() || !std::isfinite(x) || !std::isfinite(y))) {
+        return failure("INVALID_ENTITY_UPDATE",
+                       "Entity update requires a non-empty name and finite transform values.");
+    }
+
+    const auto path = scene_path(project, scene_id);
+    std::string content;
+    std::string code;
+    std::string message;
+    if (!read_text(path, content, code, message)) {
+        return failure("SCENE_NOT_FOUND", "Could not find the requested scene.",
+                       path.generic_string());
+    }
+    if (hash_revision(content) != expected_revision) {
+        return failure("REVISION_CONFLICT",
+                       "Scene changed since it was inspected. Inspect it again before retrying.",
+                       path.generic_string());
+    }
+
+    Json document;
+    if (!parse_scene(content, document, code, message)) {
+        return failure(code, message, path.generic_string());
+    }
+    if (document["scene"]["id"].get<std::string>() != scene_id) {
+        return failure("SCENE_ID_MISMATCH",
+                       "Scene ID inside the file does not match its filename.",
+                       path.generic_string());
+    }
+
+    auto& entities = document["entities"];
+    auto found = std::find_if(entities.begin(), entities.end(), [entity_id](const Json& entity) {
+        return entity["id"].get<std::string>() == entity_id;
+    });
+    if (found == entities.end()) {
+        return failure("ENTITY_NOT_FOUND", "Could not find the requested entity.",
+                       path.generic_string());
+    }
+
+    Json changed_entity;
+    if (remove_entity) {
+        entities.erase(found);
+    } else {
+        if (!found->contains("components") || !(*found)["components"].is_object() ||
+            !(*found)["components"].contains("transform") ||
+            !(*found)["components"]["transform"].is_object()) {
+            return failure("ENTITY_TRANSFORM_MISSING",
+                           "Entity has no transform component to update.",
+                           path.generic_string());
+        }
+        (*found)["name"] = name;
+        (*found)["components"]["transform"]["x"] = x;
+        (*found)["components"]["transform"]["y"] = y;
+        changed_entity = *found;
+    }
+
+    const std::string serialized = document.dump(2) + "\\n";
+    if (!atomic_write(path, serialized, code, message)) {
+        return failure(code, message, path.generic_string());
+    }
+
+    const auto revision = hash_revision(serialized);
+    Json payload{{"scene_id", scene_id}, {"entity_count", entities.size()},
+                 {"path", path.generic_string()}};
+    if (remove_entity) {
+        payload["deleted_entity_id"] = entity_id;
+    } else {
+        payload["entity"] = std::move(changed_entity);
+    }
+    return success(remove_entity ? "Deleted entity " + std::string{entity_id} + "."
+                                 : "Updated entity " + std::string{entity_id} + ".",
+                   std::move(payload), revision);
+}
+
+} // namespace
+
+SceneCommandResult update_entity(std::string_view project_path,
+                                 std::string_view scene_id,
+                                 std::string_view entity_id,
+                                 std::string_view name, double x, double y,
+                                 std::string_view expected_revision) {
+    return mutate_entity(project_path, scene_id, entity_id, expected_revision,
+                         false, name, x, y);
+}
+
+SceneCommandResult delete_entity(std::string_view project_path,
+                                 std::string_view scene_id,
+                                 std::string_view entity_id,
+                                 std::string_view expected_revision) {
+    return mutate_entity(project_path, scene_id, entity_id, expected_revision,
+                         true, {}, 0.0, 0.0);
+}
+
 } // namespace motorforge
