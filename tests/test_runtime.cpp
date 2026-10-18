@@ -94,6 +94,60 @@ int main() {
     require(interactive_text.find("<img id=\\\"scene\\\"") == std::string::npos,
             "scene SVG should be inline so entity selection works");
 
+
+    const auto patch_scene = motorforge::create_scene(project.string(), "Patch Scene");
+    require(patch_scene.ok, "patch scene should be created");
+    auto patch_inspected = motorforge::inspect_scene(project.string(), "patch-scene");
+    const auto patch_entity_a = motorforge::create_entity(project.string(), "patch-scene",
+        "factory-a", "Factory A", 1.0, 2.0, "", patch_inspected.revision);
+    require(patch_entity_a.ok, "first patch entity should be created");
+    auto patch_inspected_2 = motorforge::inspect_scene(project.string(), "patch-scene");
+    const auto patch_entity_b = motorforge::create_entity(project.string(), "patch-scene",
+        "factory-b", "Factory B", 3.0, 4.0, "", patch_inspected_2.revision);
+    require(patch_entity_b.ok, "second patch entity should be created");
+    const auto before_patch = motorforge::inspect_scene(project.string(), "patch-scene");
+    const std::string patch_json = R"({"operations":[
+      {"op":"update","id":"factory-a","set":{"name":"Factory A Mk II","transform":{"x":20.5,"rotation":45}}},
+      {"op":"delete","id":"factory-b"},
+      {"op":"create","entity":{"id":"spawned","name":"Spawned","components":{"transform":{"x":8,"y":9,"rotation":0,"scale_x":1,"scale_y":1}}}}
+    ]})";
+    const auto dry_run = motorforge::apply_scene_patch(project.string(), "patch-scene",
+        patch_json, before_patch.revision, true);
+    require(dry_run.ok, "valid scene patch dry-run should succeed");
+    const auto dry_payload = Json::parse(dry_run.json);
+    require(dry_payload["result"]["dry_run"] == true, "dry-run should be identified in output");
+    require(dry_payload["result"]["changes"].size() == 3, "dry-run should describe all planned operations");
+    const auto unchanged = motorforge::inspect_scene(project.string(), "patch-scene");
+    require(unchanged.revision == before_patch.revision, "dry-run must not mutate scene files");
+    const auto applied = motorforge::apply_scene_patch(project.string(), "patch-scene",
+        patch_json, before_patch.revision, false);
+    require(applied.ok, "valid multi-operation scene patch should commit");
+    const auto applied_payload = Json::parse(applied.json);
+    require(applied_payload["result"]["entity_count"] == 2, "patch should atomically create, update, and delete entities");
+    const auto patched_scene = motorforge::inspect_scene(project.string(), "patch-scene");
+    require(patched_scene.revision == applied.revision, "patch should return the committed revision");
+    const auto patched_entities = Json::parse(patched_scene.json)["result"]["entities"];
+    require(patched_entities.size() == 2, "patch should leave two entities");
+    require(patched_entities[0]["name"] == "Factory A Mk II", "patch should update entity name");
+    require(patched_entities[0]["components"]["transform"]["x"] == 20.5, "patch should update only requested transform fields");
+    require(patched_entities[0]["components"]["transform"]["y"] == 2.0, "patch should preserve unspecified transform fields");
+    require(patched_entities[1]["id"] == "spawned", "patch should create the requested entity");
+    const auto stale_patch = motorforge::apply_scene_patch(project.string(), "patch-scene",
+        patch_json, before_patch.revision, false);
+    require(!stale_patch.ok && Json::parse(stale_patch.json)["errors"][0]["code"] == "REVISION_CONFLICT",
+        "patch should reject stale revisions");
+    const auto before_invalid = motorforge::inspect_scene(project.string(), "patch-scene");
+    const auto invalid_patch = motorforge::apply_scene_patch(project.string(), "patch-scene",
+        R"({"operations":[{"op":"delete","id":"spawned"},{"op":"update","id":"missing","set":{"name":"Nope"}}]})",
+        before_invalid.revision, false);
+    require(!invalid_patch.ok, "patch containing a missing entity should fail");
+    require(motorforge::inspect_scene(project.string(), "patch-scene").revision == before_invalid.revision,
+        "failed patch must not partially commit earlier operations");
+    const auto duplicate_patch = motorforge::apply_scene_patch(project.string(), "patch-scene",
+        R"({"operations":[{"op":"delete","id":"spawned"},{"op":"delete","id":"spawned"}]})",
+        before_invalid.revision, false);
+    require(!duplicate_patch.ok, "patch must reject multiple operations against the same entity");
+
     const auto missing = motorforge::inspect_runtime(project.string(), "absent-scene");
     require(!missing.ok, "runtime should reject missing scenes");
     require(parse(missing)["errors"][0]["code"] == "SCENE_NOT_FOUND", "missing scene error should be stable");
