@@ -49,10 +49,10 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 
 ## M6 — Agent integration
 - [x] CLI command schema discovery foundation
-- [ ] MCP adapter over the same core operations
-- [ ] Capability discovery and task recipes
-- [ ] Agent-safe permissions and sandbox boundaries
-- [ ] Integration tests using a mock agent client
+- [x] Initial stdio MCP adapter and integration test
+- [x] Workspace path boundary for MCP tools
+- [ ] Expand tool surface to scene, entity, asset, and runtime operations
+- [ ] Agent-safe permission policies and richer sandbox boundaries
 
 ## M7 — Editor and extensibility
 - [ ] Scene hierarchy and inspector
