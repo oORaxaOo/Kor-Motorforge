@@ -13,23 +13,14 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - C++20 core and CMake build.
 - CLI help, version, and machine-readable capability discovery.
 - Safe project scaffolding and project manifest validation.
-- A stdio MCP adapter exposing capabilities, project creation, validation, and procedural sprite generation.
-- A deterministic procedural SVG generator for an industrial-building sprite, with seed metadata and no image-generation model.
+- Versioned scene documents with scene list/create/inspect operations.
+- Entity creation with transforms, optional sprite references, and optimistic revision checks.
+- Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
+- A stdio MCP adapter exposing project, scene, entity, validation, and procedural asset tools.
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The current validator checks required project invariants; it is not yet a complete implementation of every JSON Schema rule. The procedural asset system currently supports one SVG sprite family. No graphical editor, game renderer, or general-purpose runtime has been implemented yet.
-
-## Design goals
-
-- **LLM-first, not LLM-only:** every important capability is available through a documented API/CLI; humans retain a usable editor and direct control.
-- **Inspectable state:** projects, scenes, entities, components, and assets have explicit schemas and stable identifiers.
-- **Transactional changes:** validate changes before applying them, report structured errors, and support diffs and rollback-friendly workflows.
-- **Procedural-first content:** generate editable geometry, pixel-art-like sprites, materials, animation data, and environments from parameters and rules, while still supporting imported assets.
-- **Modular runtime:** rendering, input, audio, simulation, scripting, UI, navigation, and asset pipelines remain replaceable modules.
-- **Automated verification:** headless validation, deterministic tests where practical, reproducible builds, and machine-readable diagnostics.
-- **Portable and resource-aware:** target Linux first, with cross-platform design and sensible performance on modest hardware.
-- **No model lock-in:** external LLMs connect through adapter interfaces and documented tools; the core engine does not depend on one provider.
+The scene editor currently operates on versioned JSON documents; it is not yet a graphical editor or game renderer. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
@@ -45,16 +36,21 @@ ctest --test-dir build --output-on-failure
 
 ```sh
 ./build/motorforge --help
-./build/motorforge --version
 ./build/motorforge capabilities --json
-./build/motorforge validate examples/empty-project --json
 ./build/motorforge init ./MyGame --name "My Game" --json
-./build/motorforge spritegen ./assets/factory.svg --type industrial-building --seed 42 --size 64 --json
+./build/motorforge spritegen ./MyGame/assets/factory.svg --seed 42 --json
+./build/motorforge scene create ./MyGame --name "Main Scene" --json
+./build/motorforge scene inspect ./MyGame main-scene --json
 ```
 
-Project initialization and sprite generation refuse to overwrite existing destinations. Validation accepts either a project directory containing `project.json` or a direct path to a manifest file. JSON mode writes machine-readable results to standard output. A failed operation returns a non-zero exit code and includes stable diagnostic codes.
+Entity mutations require the current scene revision returned by `scene inspect`:
 
-The first sprite generator produces an editable SVG using deterministic procedural rules. Reusing the same generator version, parameters, and seed produces byte-identical output.
+```sh
+REVISION=$(./build/motorforge scene inspect ./MyGame main-scene --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["revision"])')
+./build/motorforge entity create ./MyGame main-scene --id factory --name "Factory" --x 12 --y 8 --sprite assets/factory.svg --expected-revision "$REVISION" --json
+```
+
+Project initialization and asset generation refuse to overwrite existing destinations. Scene edits use optimistic concurrency: a stale revision is rejected instead of silently overwriting newer work.
 
 ## MCP integration
 
@@ -64,11 +60,11 @@ The adapter uses the Model Context Protocol over standard input/output and Pytho
 python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-projects
 ```
 
-Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes `motorforge_capabilities`, `validate_project`, `create_project`, and `generate_procedural_sprite`. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
+Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes project creation and validation, scene list/create/inspect, revision-checked entity creation, and procedural sprite generation. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
 
 ## Planned milestones
 
-See [ROADMAP.md](ROADMAP.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md), and [AI coding agent instructions](AGENTS.md).
+See [ROADMAP.md](ROADMAP.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), [Scene Schema](schemas/scene.schema.json), [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md), and [AI coding agent instructions](AGENTS.md).
 
 ## Development principles
 
