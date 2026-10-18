@@ -26,12 +26,13 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Entity creation with transform and optional sprite component
 - [x] Optimistic concurrency checks using scene revision tokens
 - [ ] Schema migration strategy
-- [ ] Entity update/delete transactions
+- [x] Entity update/delete transactions with revision checks and atomic file replacement
 
 ## M3 — Safe editing API
 - [x] Read-only scene inspection
 - [x] Revision-checked entity creation
 - [ ] Plan/diff/apply transaction model
+- [ ] Persistent undo/rollback journal
 - [ ] Undo/rollback journal
 - [ ] Full JSON Schema validation for tool inputs and outputs
 
