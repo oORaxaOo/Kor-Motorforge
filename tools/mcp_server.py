@@ -155,7 +155,8 @@ TOOLS: list[dict[str, Any]] = [
             "additionalProperties": False
         }
     },
-    {\n        "name": "runtime_inspect",
+    {
+        "name": "runtime_inspect",
         "description": "Load a scene in headless mode, validate runtime transforms, and resolve sprite assets without opening a window.",
         "inputSchema": {
             "type": "object",
