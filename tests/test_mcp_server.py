@@ -77,7 +77,7 @@ def main() -> int:
             }),
             request(7, "tools/call", {
                 "name": "generate_procedural_sprite",
-                "arguments": {"path": "sprites/factory.svg", "seed": 42, "size": 64},
+                "arguments": {"path": "sample-project/assets/factory.svg", "seed": 42, "size": 64},
             }),
             request(8, "tools/call", {
                 "name": "validate_project",
@@ -99,7 +99,7 @@ def main() -> int:
                     "expected_revision": scene_revision,
                     "x": 12.5,
                     "y": 7,
-                    "sprite_asset": "sprites/factory.svg",
+                    "sprite_asset": "assets/factory.svg",
                 },
             }),
             request(10, "tools/call", {
@@ -122,7 +122,7 @@ def main() -> int:
             }),
         ]
         second = run_server(server, args.motorforge, workspace, second_batch)
-        generated_svg = (workspace / "sprites" / "factory.svg").read_text(encoding="utf-8")
+        generated_svg = (workspace / "sample-project" / "assets" / "factory.svg").read_text(encoding="utf-8")
 
     initialized = first[1]["result"]
     assert initialized["serverInfo"]["name"] == "kor-motorforge"
