@@ -121,6 +121,40 @@ TOOLS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "entity_update",
+        "description": "Update an entity's name and position using the latest scene revision token.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+                "id": {"type": "string", "minLength": 1},
+                "name": {"type": "string", "minLength": 1},
+                "expected_revision": {"type": "string", "minLength": 1},
+                "x": {"type": "number"},
+                "y": {"type": "number"}
+            },
+            "required": ["project_path", "scene_id", "id", "name", "expected_revision", "x", "y"],
+            "additionalProperties": False
+        }
+    },
+    {
+        "name": "entity_delete",
+        "description": "Delete an entity using the latest scene revision token.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+                "id": {"type": "string", "minLength": 1},
+                "expected_revision": {"type": "string", "minLength": 1}
+            },
+            "required": ["project_path", "scene_id", "id", "expected_revision"],
+            "additionalProperties": False
+        }
+    },
+
 ]
 
 
@@ -228,6 +262,32 @@ def call_tool(name: str, arguments: Any, executable: Path,
             executable,
             ["spritegen", str(path), "--type", sprite_type, "--seed", str(seed), "--size", str(size), "--json"],
         )
+    elif name in {"entity_update", "entity_delete"}:
+        required = {"project_path", "scene_id", "id", "expected_revision"}
+        allowed = required | ({"name", "x", "y"} if name == "entity_update" else set())
+        if set(arguments) != allowed:
+            raise ToolFailure("INVALID_ARGUMENTS", f"{name} requires exactly: {', '.join(sorted(allowed))}.")
+        project_path = resolve_workspace_path(arguments["project_path"], workspace, allow_external)
+        scene_id, entity_id, revision = arguments["scene_id"], arguments["id"], arguments["expected_revision"]
+        if not all(isinstance(value, str) and value for value in (scene_id, entity_id, revision)):
+            raise ToolFailure("INVALID_ARGUMENTS", "scene_id, id, and expected_revision must be non-empty strings.")
+        if name == "entity_update":
+            entity_name, x, y = arguments["name"], arguments["x"], arguments["y"]
+            if not isinstance(entity_name, str) or not entity_name.strip():
+                raise ToolFailure("INVALID_ENTITY_NAME", "name must be a non-empty string.")
+            if (isinstance(x, bool) or not isinstance(x, (int, float)) or
+                    isinstance(y, bool) or not isinstance(y, (int, float))):
+                raise ToolFailure("INVALID_TRANSFORM", "x and y must be numbers.")
+            return_code, output = invoke_motorforge(executable, [
+                "entity", "update", str(project_path), scene_id, "--id", entity_id,
+                "--name", entity_name, "--expected-revision", revision,
+                "--x", str(x), "--y", str(y), "--json",
+            ])
+        else:
+            return_code, output = invoke_motorforge(executable, [
+                "entity", "delete", str(project_path), scene_id, "--id", entity_id,
+                "--expected-revision", revision, "--json",
+            ])
     elif name in {"scene_list", "scene_create", "scene_inspect", "entity_create"}:
         project_path = resolve_workspace_path(arguments.get("project_path"), workspace, allow_external)
         if name == "scene_list":
