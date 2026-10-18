@@ -157,7 +157,7 @@ def main() -> int:
         runtime_payload = tool_payload(runtime_responses[17])
         assert runtime_responses[17]["result"]["isError"] is False
         assert runtime_payload["result"]["runtime"]["status"] == "ready"
-        assert runtime_payload["result"]["renderable_entity_count"] == 1
+        assert runtime_payload["result"]["sprite_entity_count"] == 1
 
         deleted_batch = [
             request(15, "tools/call", {
