@@ -1,10 +1,14 @@
 #include "core/engine_info.hpp"
 #include "core/project_creator.hpp"
 #include "core/project_validator.hpp"
+#include "core/procedural_sprite.hpp"
 
+#include <charconv>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <system_error>
 
 namespace {
 
@@ -17,7 +21,8 @@ void print_help() {
         << "  motorforge --version\n"
         << "  motorforge capabilities --json\n"
         << "  motorforge validate <project-directory-or-project.json> [--json]\n"
-        << "  motorforge init <new-directory> --name <name> [--id <id>] [--json]\n\n"
+        << "  motorforge init <new-directory> --name <name> [--id <id>] [--json]\n"
+        << "  motorforge spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] [--json]\n\n"
         << "The CLI contract is version " << motorforge::contract_version() << ".\n";
 }
 
@@ -32,6 +37,14 @@ void print_create_errors(const motorforge::CreateProjectResult& result) {
         std::cerr << "error[" << result.error_codes[index] << "]: "
                   << result.messages[index] << '\n';
     }
+}
+
+template <typename Integer>
+bool parse_integer(std::string_view text, Integer& value) {
+    const auto* begin = text.data();
+    const auto* end = text.data() + text.size();
+    const auto result = std::from_chars(begin, end, value);
+    return result.ec == std::errc{} && result.ptr == end;
 }
 
 } // namespace
@@ -123,6 +136,57 @@ int main(int argc, char* argv[]) {
                       << result.project_path.generic_string() << '\n';
         } else {
             print_create_errors(result);
+        }
+
+        return result.ok ? 0 : 1;
+    }
+
+    if (command == "spritegen") {
+        if (argc < 3) {
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] [--json]'\n";
+            return 2;
+        }
+
+        const std::string output_path{argv[2]};
+        std::string type{"industrial-building"};
+        std::uint32_t seed{1};
+        int size{64};
+        bool json_output = false;
+
+        for (int index = 3; index < argc; ++index) {
+            const std::string_view option{argv[index]};
+            if (option == "--json") {
+                json_output = true;
+            } else if (option == "--type" && index + 1 < argc) {
+                type = argv[++index];
+            } else if (option == "--seed" && index + 1 < argc) {
+                if (!parse_integer<std::uint32_t>(argv[++index], seed)) {
+                    std::cerr << "error[INVALID_SEED]: seed must be an unsigned 32-bit integer.\n";
+                    return 2;
+                }
+            } else if (option == "--size" && index + 1 < argc) {
+                if (!parse_integer<int>(argv[++index], size)) {
+                    std::cerr << "error[INVALID_SPRITE_SIZE]: size must be an integer.\n";
+                    return 2;
+                }
+            } else {
+                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '"
+                          << option << "'\n";
+                return 2;
+            }
+        }
+
+        const auto result = motorforge::write_procedural_sprite(output_path, type, seed, size);
+        if (json_output) {
+            std::cout << motorforge::sprite_generation_result_json(result) << '\n';
+        } else if (result.ok) {
+            std::cout << "Generated procedural sprite: "
+                      << result.output_path.generic_string() << '\n';
+        } else {
+            for (std::size_t index = 0; index < result.error_codes.size(); ++index) {
+                std::cerr << "error[" << result.error_codes[index] << "]: "
+                          << result.messages[index] << '\n';
+            }
         }
 
         return result.ok ? 0 : 1;
