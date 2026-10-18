@@ -50,6 +50,21 @@ TOOLS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "generate_procedural_sprite",
+        "description": "Generate a deterministic, editable SVG sprite from procedural rules without using an image-generation model.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "minLength": 1},
+                "type": {"type": "string", "enum": ["industrial-building"]},
+                "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+                "size": {"type": "integer", "minimum": 16, "maximum": 1024},
+            },
+            "required": ["path"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -140,6 +155,23 @@ def call_tool(name: str, arguments: Any, executable: Path,
         if project_id:
             command.extend(["--id", project_id])
         return_code, output = invoke_motorforge(executable, command)
+    elif name == "generate_procedural_sprite":
+        if set(arguments) - {"path", "type", "seed", "size"} or "path" not in arguments:
+            raise ToolFailure("INVALID_ARGUMENTS", "generate_procedural_sprite requires path; type, seed, and size are optional.")
+        path = resolve_workspace_path(arguments.get("path"), workspace, allow_external)
+        sprite_type = arguments.get("type", "industrial-building")
+        seed = arguments.get("seed", 1)
+        size = arguments.get("size", 64)
+        if sprite_type != "industrial-building":
+            raise ToolFailure("UNSUPPORTED_SPRITE_TYPE", "Supported sprite type: industrial-building.")
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0 or seed > 4294967295:
+            raise ToolFailure("INVALID_SEED", "seed must be an unsigned 32-bit integer.")
+        if isinstance(size, bool) or not isinstance(size, int) or size < 16 or size > 1024:
+            raise ToolFailure("INVALID_SPRITE_SIZE", "size must be an integer between 16 and 1024.")
+        return_code, output = invoke_motorforge(
+            executable,
+            ["spritegen", str(path), "--type", sprite_type, "--seed", str(seed), "--size", str(size), "--json"],
+        )
     else:
         raise ToolFailure("UNKNOWN_TOOL", f"Unknown Motorforge tool: {name}")
 
@@ -173,7 +205,7 @@ def handle_message(message: Any, executable: Path, workspace: Path,
     if method == "initialize":
         requested_version = params.get("protocolVersion")
         negotiated_version = (
-            requested_version if requested_version in SUPPORTED_PROTOCOL_VERSIONS
+            requested_version if isinstance(requested_version, str) and requested_version in SUPPORTED_PROTOCOL_VERSIONS
             else PROTOCOL_VERSION
         )
         result = {
