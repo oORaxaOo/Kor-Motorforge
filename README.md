@@ -13,8 +13,9 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - C++20 core and CMake build.
 - CLI help and version commands.
 - Machine-readable capability discovery: `motorforge capabilities --json`.
+- Safe project scaffolding: `motorforge init <path> --name "My Game" --json`.
 - Version 1 project manifest format and core invariant validation.
-- Stable diagnostic codes and JSON validation results.
+- Stable diagnostic codes and JSON results for project creation and validation.
 - Example project under `examples/empty-project`.
 - Automated build and test workflow in GitHub Actions.
 
@@ -48,9 +49,10 @@ ctest --test-dir build --output-on-failure
 ./build/motorforge --version
 ./build/motorforge capabilities --json
 ./build/motorforge validate examples/empty-project --json
+./build/motorforge init ./MyGame --name "My Game" --json
 ```
 
-Validation accepts either a project directory containing `project.json` or a direct path to a manifest file. JSON mode writes a machine-readable result to standard output. A validation failure returns a non-zero exit code and includes stable diagnostic codes.
+Project initialization refuses to overwrite an existing destination. Validation accepts either a project directory containing `project.json` or a direct path to a manifest file. JSON mode writes machine-readable results to standard output. A failed operation returns a non-zero exit code and includes stable diagnostic codes.
 
 ## Initial technical direction
 
@@ -58,7 +60,7 @@ The current direction is a native C++20 core, CMake build system, a lightweight 
 
 ## Planned milestones
 
-See [ROADMAP.md](ROADMAP.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), and [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md).
+See [ROADMAP.md](ROADMAP.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md), and [AI coding agent instructions](AGENTS.md).
 
 ## Development principles
 
