@@ -56,6 +56,13 @@ std::string_view capabilities_json() noexcept {
       "description": "Create a new project manifest without overwriting an existing destination.",
       "mutates_state": true,
       "status": "implemented"
+    },
+    {
+      "name": "spritegen",
+      "invocation": "motorforge spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] --json",
+      "description": "Generate a deterministic, editable industrial-building SVG without image-generation models.",
+      "mutates_state": true,
+      "status": "implemented"
     }
   ]
 })json";
