@@ -36,7 +36,7 @@ jobs:
           python3 -c 'import json; d=json.load(open("created.json")); assert d["ok"] is True; assert d["project"]["id"] == "ci-test-project"'
           ./build/motorforge validate "$RUNNER_TEMP/motorforge-ci-project" --json > created-validation.json
           python3 -c 'import json; d=json.load(open("created-validation.json")); assert d["ok"] is True'
-          ./build/motorforge spritegen "$RUNNER_TEMP/motorforge-ci-sprite.svg" --seed 42 --size 64 --json > sprite.json
+          ./build/motorforge spritegen "$RUNNER_TEMP/motorforge-ci-project/assets/factory.svg" --seed 42 --size 64 --json > sprite.json
           python3 -c 'import json; d=json.load(open("sprite.json")); assert d["ok"] is True; assert d["asset"]["seed"] == 42'
           python3 -c 'from pathlib import Path; p=Path("'"$RUNNER_TEMP"'/motorforge-ci-sprite.svg"); assert p.read_text().startswith("<svg ")'
           ./build/motorforge scene create "$RUNNER_TEMP/motorforge-ci-project" --name "Main Scene" --json > scene-created.json
