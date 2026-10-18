@@ -8,12 +8,14 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] CMake-based native project
 - [x] CI build and test workflow
 - [x] First GitHub Actions build and test run verified
+- [x] AI coding-agent instructions
 
 ## M1 — CLI and core contracts
 - [x] Help and version commands
 - [x] Machine-readable capability discovery
 - [x] Structured diagnostics foundation
 - [x] Project manifest parser and core validation
+- [x] Safe project initialization with overwrite protection
 - [x] Stable error codes and JSON output tests
 - [ ] Full JSON Schema conformance validation (current validator checks required core invariants)
 
