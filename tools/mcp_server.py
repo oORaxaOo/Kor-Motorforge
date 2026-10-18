@@ -122,8 +122,8 @@ TOOLS: list[dict[str, Any]] = [
                                 "id": {"type": "string", "minLength": 1},
                                 "name": {"type": "string", "minLength": 1},
                                 "components": {"type": "object"}
-                            }, "additionalProperties": false}
-                        }, "additionalProperties": false},
+                            }, "additionalProperties": False}
+                        }, "additionalProperties": False},
                         {"type": "object", "required": ["op", "id", "set"], "properties": {
                             "op": {"const": "update"},
                             "id": {"type": "string", "minLength": 1},
@@ -133,17 +133,17 @@ TOOLS: list[dict[str, Any]] = [
                                     "x": {"type": "number"}, "y": {"type": "number"},
                                     "rotation": {"type": "number"}, "scale_x": {"type": "number"},
                                     "scale_y": {"type": "number"}
-                                }, "additionalProperties": false}
-                            }, "additionalProperties": false}
-                        }, "additionalProperties": false},
+                                }, "additionalProperties": False}
+                            }, "additionalProperties": False}
+                        }, "additionalProperties": False},
                         {"type": "object", "required": ["op", "id"], "properties": {
                             "op": {"const": "delete"}, "id": {"type": "string", "minLength": 1}
-                        }, "additionalProperties": false}
+                        }, "additionalProperties": False}
                     ]}
                 }
             },
             "required": ["project_path", "scene_id", "expected_revision", "operations"],
-            "additionalProperties": false
+            "additionalProperties": False
         }
     },
     {
