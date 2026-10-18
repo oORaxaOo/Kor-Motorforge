@@ -7,20 +7,22 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Architecture and LLM tool contract
 - [x] CMake-based native project
 - [x] CI build and test workflow
-- [ ] Verify the first GitHub Actions run
+- [x] First GitHub Actions build and test run verified
 
 ## M1 — CLI and core contracts
 - [x] Help and version commands
 - [x] Machine-readable capability discovery
 - [x] Structured diagnostics foundation
-- [ ] Project manifest parser and schema validation
-- [ ] Stable error codes and JSON output tests
+- [x] Project manifest parser and core validation
+- [x] Stable error codes and JSON output tests
+- [ ] Full JSON Schema conformance validation (current validator checks required core invariants)
 
 ## M2 — Project model
-- [ ] Versioned project manifest
+- [x] Versioned project manifest
 - [ ] Stable IDs for scenes, entities, components, and assets
-- [ ] Schema discovery and migration strategy
-- [ ] Validation without launching the editor
+- [x] Schema discovery foundation
+- [ ] Schema migration strategy
+- [x] Validation without launching the editor
 
 ## M3 — Safe editing API
 - [ ] Read-only inspection commands
@@ -44,7 +46,7 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Asset metadata, provenance, and reproducible regeneration
 
 ## M6 — Agent integration
-- [ ] CLI command schema and JSON output
+- [x] CLI command schema discovery foundation
 - [ ] MCP adapter over the same core operations
 - [ ] Capability discovery and task recipes
 - [ ] Agent-safe permissions and sandbox boundaries
