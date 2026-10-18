@@ -46,7 +46,7 @@ int main() {
     require(payload["result"]["runtime"]["status"] == "ready", "runtime should report ready");
     require(payload["result"]["runtime"]["mode"] == "headless", "runtime should be headless");
     require(payload["result"]["entity_count"] == 1, "runtime should load one entity");
-    require(payload["result"]["renderable_entity_count"] == 1, "SVG sprite should be renderable");
+    require(payload["result"]["sprite_entity_count"] == 1, "SVG sprite should be renderable");
     require(payload["result"]["entities"][0]["transform"]["x"] == 12.5, "runtime should preserve transform");
     require(payload["result"]["assets"][0]["path"] == "assets/factory.svg", "runtime should report resolved asset");
 
