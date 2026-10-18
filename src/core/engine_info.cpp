@@ -86,6 +86,13 @@ std::string_view capabilities_json() noexcept {
       "status": "implemented"
     },
     {
+      "name": "scene.patch",
+      "invocation": "motorforge scene patch <project> <scene-id> --patch <file.json> --expected-revision <revision> [--dry-run] --json",
+      "description": "Validate, diff, and atomically apply up to 256 entity create/update/delete operations with optimistic concurrency.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
       "name": "entity.create",
       "invocation": "motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --json",
       "description": "Create an entity using optimistic concurrency and a relative asset path.",

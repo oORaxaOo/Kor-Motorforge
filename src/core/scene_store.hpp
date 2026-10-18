@@ -33,5 +33,9 @@ struct SceneCommandResult {
 [[nodiscard]] SceneCommandResult delete_entity(
     std::string_view project_path, std::string_view scene_id,
     std::string_view entity_id, std::string_view expected_revision);
+[[nodiscard]] SceneCommandResult apply_scene_patch(
+    std::string_view project_path, std::string_view scene_id,
+    std::string_view patch_json, std::string_view expected_revision,
+    bool dry_run = false);
 
 } // namespace motorforge

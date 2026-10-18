@@ -31,7 +31,7 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 ## M3 — Safe editing API
 - [x] Read-only scene inspection
 - [x] Revision-checked entity creation
-- [ ] Plan/diff/apply transaction model
+- [x] Plan/diff/apply transaction model for atomic entity create/update/delete batches
 - [ ] Persistent undo/rollback journal
 - [ ] Undo/rollback journal
 - [ ] Full JSON Schema validation for tool inputs and outputs
@@ -65,8 +65,8 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Richer permission policies and sandbox boundaries
 
 ## M7 — Editor and extensibility
-- [x] Read-only scene hierarchy and entity inspector in the HTML scene viewer
-- [ ] Editable transform fields with revision-checked persistence
+- [x] Optional read-only scene hierarchy inspector export (diagnostic only; not a required human workflow)
+- [x] AI-facing scene patch operations with dry-run diff and revision-checked atomic persistence
 - [ ] Asset browser and generator graph
 - [ ] Plugin API and scripting interface
 - [ ] UI, audio, navigation, animation, physics integrations

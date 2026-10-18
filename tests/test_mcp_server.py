@@ -193,6 +193,54 @@ def main() -> int:
         assert "Scene hierarchy" in viewer and "Entity inspector" in viewer
         assert "data-entity-id" in viewer and "Position X" in viewer
 
+
+        patch_scene_response = run_server(server, args.motorforge, workspace, [
+            request(20, "tools/call", {"name": "scene_create", "arguments": {
+                "project_path": "sample-project", "name": "Patch Scene", "id": "patch-scene"
+            }}),
+        ])
+        assert patch_scene_response[20]["result"]["isError"] is False
+        patch_inspect_response = run_server(server, args.motorforge, workspace, [
+            request(21, "tools/call", {"name": "scene_inspect", "arguments": {
+                "project_path": "sample-project", "scene_id": "patch-scene"
+            }}),
+        ])
+        patch_revision = tool_payload(patch_inspect_response[21])["revision"]
+        patch_entity_response = run_server(server, args.motorforge, workspace, [
+            request(22, "tools/call", {"name": "entity_create", "arguments": {
+                "project_path": "sample-project", "scene_id": "patch-scene", "id": "agent-unit",
+                "name": "Agent Unit", "expected_revision": patch_revision, "x": 1, "y": 2
+            }}),
+        ])
+        assert patch_entity_response[22]["result"]["isError"] is False
+        patch_inspect_response = run_server(server, args.motorforge, workspace, [
+            request(23, "tools/call", {"name": "scene_inspect", "arguments": {
+                "project_path": "sample-project", "scene_id": "patch-scene"
+            }}),
+        ])
+        patch_revision = tool_payload(patch_inspect_response[23])["revision"]
+        patch_args = {
+            "project_path": "sample-project", "scene_id": "patch-scene",
+            "expected_revision": patch_revision, "dry_run": True,
+            "operations": [{"op": "update", "id": "agent-unit",
+                            "set": {"name": "Agent Unit Revised", "transform": {"x": 44}}}],
+        }
+        dry_patch_response = run_server(server, args.motorforge, workspace, [
+            request(24, "tools/call", {"name": "scene_patch", "arguments": patch_args}),
+        ])
+        assert dry_patch_response[24]["result"]["isError"] is False
+        dry_patch = tool_payload(dry_patch_response[24])
+        assert dry_patch["result"]["dry_run"] is True
+        assert dry_patch["result"]["changes"]
+        patch_args["dry_run"] = False
+        apply_patch_response = run_server(server, args.motorforge, workspace, [
+            request(25, "tools/call", {"name": "scene_patch", "arguments": patch_args}),
+        ])
+        assert apply_patch_response[25]["result"]["isError"] is False
+        applied_patch = tool_payload(apply_patch_response[25])
+        assert applied_patch["result"]["entity_count"] == 1
+        assert applied_patch["revision"] != patch_revision
+
         deleted_batch = [
             request(15, "tools/call", {
                 "name": "entity_delete",
@@ -223,7 +271,7 @@ def main() -> int:
     expected_tools = {
         "motorforge_capabilities", "validate_project", "create_project",
         "generate_procedural_sprite", "scene_list", "scene_create",
-        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect", "scene_preview_render", "scene_preview_interactive",
+        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect", "scene_preview_render", "scene_preview_interactive", "scene_patch",
     }
     assert expected_tools <= tool_names
 

@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 PROTOCOL_VERSION = "2025-11-25"
@@ -101,6 +102,49 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["project_path", "scene_id"],
             "additionalProperties": False,
         },
+    },
+    {
+        "name": "scene_patch",
+        "description": "Plan or atomically apply a revision-checked batch of scene entity creates, updates, and deletes. Use dry_run first; failed patches never partially commit.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+                "expected_revision": {"type": "string", "minLength": 1},
+                "dry_run": {"type": "boolean"},
+                "operations": {
+                    "type": "array", "minItems": 1, "maxItems": 256,
+                    "items": {"oneOf": [
+                        {"type": "object", "required": ["op", "entity"], "properties": {
+                            "op": {"const": "create"},
+                            "entity": {"type": "object", "required": ["id", "name"], "properties": {
+                                "id": {"type": "string", "minLength": 1},
+                                "name": {"type": "string", "minLength": 1},
+                                "components": {"type": "object"}
+                            }, "additionalProperties": False}
+                        }, "additionalProperties": False},
+                        {"type": "object", "required": ["op", "id", "set"], "properties": {
+                            "op": {"const": "update"},
+                            "id": {"type": "string", "minLength": 1},
+                            "set": {"type": "object", "minProperties": 1, "properties": {
+                                "name": {"type": "string", "minLength": 1},
+                                "transform": {"type": "object", "minProperties": 1, "properties": {
+                                    "x": {"type": "number"}, "y": {"type": "number"},
+                                    "rotation": {"type": "number"}, "scale_x": {"type": "number"},
+                                    "scale_y": {"type": "number"}
+                                }, "additionalProperties": False}
+                            }, "additionalProperties": False}
+                        }, "additionalProperties": False},
+                        {"type": "object", "required": ["op", "id"], "properties": {
+                            "op": {"const": "delete"}, "id": {"type": "string", "minLength": 1}
+                        }, "additionalProperties": False}
+                    ]}
+                }
+            },
+            "required": ["project_path", "scene_id", "expected_revision", "operations"],
+            "additionalProperties": False
+        }
     },
     {
         "name": "entity_create",
@@ -333,6 +377,43 @@ def call_tool(name: str, arguments: Any, executable: Path,
                 "entity", "delete", str(project_path), scene_id, "--id", entity_id,
                 "--expected-revision", revision, "--json",
             ])
+    elif name == "scene_patch":
+        allowed = {"project_path", "scene_id", "expected_revision", "operations", "dry_run"}
+        required = {"project_path", "scene_id", "expected_revision", "operations"}
+        if not required <= set(arguments) or set(arguments) - allowed:
+            raise ToolFailure("INVALID_ARGUMENTS", "scene_patch requires project_path, scene_id, expected_revision, and operations; dry_run is optional.")
+        project_path = resolve_workspace_path(arguments["project_path"], workspace, allow_external)
+        scene_id, revision = arguments["scene_id"], arguments["expected_revision"]
+        operations = arguments["operations"]
+        dry_run = arguments.get("dry_run", False)
+        if not isinstance(scene_id, str) or not scene_id or not isinstance(revision, str) or not revision:
+            raise ToolFailure("INVALID_ARGUMENTS", "scene_id and expected_revision must be non-empty strings.")
+        if not isinstance(dry_run, bool):
+            raise ToolFailure("INVALID_ARGUMENTS", "dry_run must be a boolean.")
+        if not isinstance(operations, list) or not 1 <= len(operations) <= 256:
+            raise ToolFailure("INVALID_SCENE_PATCH", "operations must contain between 1 and 256 operations.")
+        patch_text = json.dumps({"operations": operations}, ensure_ascii=False, separators=(",", ":"))
+        if len(patch_text.encode("utf-8")) > 1024 * 1024:
+            raise ToolFailure("INVALID_SCENE_PATCH", "patch operations exceed the 1 MiB limit.")
+        temporary_patch = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", suffix=".json",
+                prefix=".motorforge-patch-", dir=workspace, delete=False
+            ) as patch_file:
+                patch_file.write(patch_text)
+                temporary_patch = Path(patch_file.name)
+            command = ["scene", "patch", str(project_path), scene_id,
+                       "--patch", str(temporary_patch), "--expected-revision", revision, "--json"]
+            if dry_run:
+                command.append("--dry-run")
+            return_code, output = invoke_motorforge(executable, command)
+        finally:
+            if temporary_patch is not None:
+                try:
+                    temporary_patch.unlink(missing_ok=True)
+                except OSError:
+                    pass
     elif name == "scene_preview_interactive":
         allowed = {"project_path", "scene_id", "output_path", "width", "height"}
         required = {"project_path", "scene_id", "output_path"}

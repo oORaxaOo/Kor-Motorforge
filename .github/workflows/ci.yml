@@ -33,7 +33,7 @@ jobs:
       - name: Verify machine-readable capabilities and project workflows
         run: |
           ./build/motorforge capabilities --json > capabilities.json
-          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "entity.create", "runtime.inspect", "preview.render", "preview.interactive"} <= names'
+          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "scene.patch", "entity.create", "runtime.inspect", "preview.render", "preview.interactive"} <= names'
           ./build/motorforge validate examples/empty-project --json > validation.json
           python3 -c 'import json; d=json.load(open("validation.json")); assert d["ok"] is True; assert d["project"]["id"] == "my-first-game"'
           ./build/motorforge init "$RUNNER_TEMP/motorforge-ci-project" --name "CI Test Project" --json > created.json
@@ -48,6 +48,14 @@ jobs:
           REVISION=$(python3 -c 'import json; print(json.load(open("scene-inspected.json"))["revision"])')
           ./build/motorforge entity create "$RUNNER_TEMP/motorforge-ci-project" main-scene --id factory --name Factory --x 12 --y 8 --sprite assets/factory.svg --expected-revision "$REVISION" --json > entity-created.json
           python3 -c 'import json; d=json.load(open("entity-created.json")); assert d["ok"] is True; assert d["result"]["entity"]["id"] == "factory"'
+          PATCH_REVISION=$(python3 -c 'import json; print(json.load(open("entity-created.json"))["revision"])')
+          printf '%s\n' '{"operations":[{"op":"update","id":"factory","set":{"name":"Factory Patched","transform":{"x":14}}}]}' > "$RUNNER_TEMP/scene-patch.json"
+          ./build/motorforge scene patch "$RUNNER_TEMP/motorforge-ci-project" main-scene --patch "$RUNNER_TEMP/scene-patch.json" --expected-revision "$PATCH_REVISION" --dry-run --json > patch-plan.json
+          python3 -c 'import json; d=json.load(open("patch-plan.json")); assert d["ok"] is True; assert d["result"]["dry_run"] is True; assert len(d["result"]["changes"]) == 1'
+          ./build/motorforge scene patch "$RUNNER_TEMP/motorforge-ci-project" main-scene --patch "$RUNNER_TEMP/scene-patch.json" --expected-revision "$PATCH_REVISION" --json > patch-applied.json
+          python3 -c 'import json; d=json.load(open("patch-applied.json")); assert d["ok"] is True; assert d["result"]["dry_run"] is False; assert d["revision"] != d["result"]["revision_before"]; assert d["result"]["changes"][0]["after"]["name"] == "Factory Patched"'
+          ./build/motorforge scene inspect "$RUNNER_TEMP/motorforge-ci-project" main-scene --json > patched-scene.json
+          python3 -c 'import json; d=json.load(open("patched-scene.json")); assert d["result"]["entities"][0]["name"] == "Factory Patched"; assert d["result"]["entities"][0]["components"]["transform"]["x"] == 14'
           ./build/motorforge preview render "$RUNNER_TEMP/motorforge-ci-project" main-scene --output "$RUNNER_TEMP/motorforge-ci-project/preview.svg" --width 640 --height 480 --json > preview.json
           python3 -c 'import json; d=json.load(open("preview.json")); assert d["ok"] is True; assert d["result"]["sprite_count"] == 1; assert open("'"$RUNNER_TEMP"'/motorforge-ci-project/preview.svg").read().startswith("<svg")'
           ./build/motorforge preview interactive "$RUNNER_TEMP/motorforge-ci-project" main-scene --output "$RUNNER_TEMP/motorforge-ci-project/scene-viewer.html" --width 640 --height 480 --json > interactive-preview.json
