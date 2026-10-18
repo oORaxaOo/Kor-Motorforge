@@ -26,5 +26,12 @@ struct SceneCommandResult {
     double y,
     std::string_view sprite_asset,
     std::string_view expected_revision);
+[[nodiscard]] SceneCommandResult update_entity(
+    std::string_view project_path, std::string_view scene_id,
+    std::string_view entity_id, std::string_view name, double x, double y,
+    std::string_view expected_revision);
+[[nodiscard]] SceneCommandResult delete_entity(
+    std::string_view project_path, std::string_view scene_id,
+    std::string_view entity_id, std::string_view expected_revision);
 
 } // namespace motorforge
