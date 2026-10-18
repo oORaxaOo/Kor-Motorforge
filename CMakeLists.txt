@@ -83,6 +83,12 @@ if(BUILD_TESTING)
     target_link_libraries(motorforge_scene_store_tests PRIVATE KorMotorforge::Core)
     add_test(NAME motorforge_scene_store COMMAND motorforge_scene_store_tests)
 
+    add_executable(motorforge_runtime_tests
+        tests/test_runtime.cpp
+    )
+    target_link_libraries(motorforge_runtime_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_runtime COMMAND motorforge_runtime_tests)
+
     add_test(NAME motorforge_cli_help COMMAND motorforge --help)
     add_test(NAME motorforge_cli_version COMMAND motorforge --version)
     add_test(NAME motorforge_cli_capabilities COMMAND motorforge capabilities --json)
