@@ -317,6 +317,23 @@ def call_tool(name: str, arguments: Any, executable: Path,
                 "entity", "delete", str(project_path), scene_id, "--id", entity_id,
                 "--expected-revision", revision, "--json",
             ])
+    elif name == "scene_preview_interactive":
+        allowed = {"project_path", "scene_id", "output_path", "width", "height"}
+        required = {"project_path", "scene_id", "output_path"}
+        if not required <= set(arguments) or set(arguments) - allowed:
+            raise ToolFailure("INVALID_ARGUMENTS", "scene_preview_interactive requires project_path, scene_id, and output_path; width and height are optional.")
+        project_path = resolve_workspace_path(arguments["project_path"], workspace, allow_external)
+        output_path = resolve_workspace_path(arguments["output_path"], workspace, allow_external)
+        scene_id = arguments["scene_id"]
+        if not isinstance(scene_id, str) or not scene_id:
+            raise ToolFailure("INVALID_SCENE_ID", "scene_id must be a non-empty string.")
+        command = ["preview", "interactive", str(project_path), scene_id, "--output", str(output_path), "--json"]
+        for key in ("width", "height"):
+            if key in arguments:
+                if isinstance(arguments[key], bool) or not isinstance(arguments[key], int):
+                    raise ToolFailure("INVALID_PREVIEW_SIZE", f"{key} must be an integer.")
+                command.extend(["--" + key, str(arguments[key])])
+        return_code, output = invoke_motorforge(executable, command)
     elif name == "scene_preview_render":
         allowed = {"project_path", "scene_id", "output_path", "width", "height"}
         required = {"project_path", "scene_id", "output_path"}
