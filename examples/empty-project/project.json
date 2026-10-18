@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project": {
+    "id": "my-first-game",
+    "name": "My First Game",
+    "description": "A minimal Kor Motorforge project."
+  },
+  "engine": {
+    "min_version": "0.1.0"
+  },
+  "settings": {
+    "target": "2d",
+    "fixed_timestep_hz": 60,
+    "seed": 12345
+  }
+}
