@@ -85,6 +85,14 @@ int main() {
     require(interactive_text.find("pointermove") != std::string::npos &&
             interactive_text.find("zoomAt") != std::string::npos,
             "interactive viewer should provide pan and zoom handlers");
+    require(interactive_text.find("Scene hierarchy") != std::string::npos &&
+            interactive_text.find("Entity inspector") != std::string::npos,
+            "interactive viewer should expose hierarchy and inspector panels");
+    require(interactive_text.find("data-entity-id") != std::string::npos &&
+            interactive_text.find("Position X") != std::string::npos,
+            "scene entities should carry selectable identity and transform metadata");
+    require(interactive_text.find("<img id=\\\"scene\\\"") == std::string::npos,
+            "scene SVG should be inline so entity selection works");
 
     const auto missing = motorforge::inspect_runtime(project.string(), "absent-scene");
     require(!missing.ok, "runtime should reject missing scenes");
