@@ -29,4 +29,10 @@ jobs:
       - name: Verify machine-readable capabilities
         run: |
           ./build/motorforge capabilities --json > capabilities.json
-          python3 -c 'import json; d=json.load(open("capabilities.json")); assert d["engine"]["name"] == "Kor Motorforge"; assert d["commands"]'
+          python3 -c 'import json; d=json.load(open("capabilities.json")); assert d["engine"]["name"] == "Kor Motorforge"; assert any(c["name"] == "validate" for c in d["commands"])'
+          ./build/motorforge validate examples/empty-project --json > validation.json
+          python3 -c 'import json; d=json.load(open("validation.json")); assert d["ok"] is True; assert d["project"]["id"] == "my-first-game"'
+
+      - name: Verify JSON source files
+        run: |
+          python3 -c 'import json; json.load(open("schemas/project.schema.json")); json.load(open("examples/empty-project/project.json"))'
