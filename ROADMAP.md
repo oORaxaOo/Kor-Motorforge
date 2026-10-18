@@ -41,8 +41,10 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Headless runtime mode
 
 ## M5 — Procedural content
-- [ ] Deterministic seeded generators
-- [ ] Editable 2D sprite primitives and palette operations
+- [x] Deterministic seeded SVG generator
+- [x] First editable industrial-building sprite family
+- [ ] Sprite palette and geometry controls
+- [ ] Additional building, vehicle, character, and terrain generators
 - [ ] Mesh and modular geometry generation
 - [ ] Material/shader parameter system
 - [ ] Asset metadata, provenance, and reproducible regeneration
@@ -51,6 +53,7 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] CLI command schema discovery foundation
 - [x] Initial stdio MCP adapter and integration test
 - [x] Workspace path boundary for MCP tools
+- [x] Procedural sprite generation exposed through MCP
 - [ ] Expand tool surface to scene, entity, asset, and runtime operations
 - [ ] Agent-safe permission policies and richer sandbox boundaries
 
