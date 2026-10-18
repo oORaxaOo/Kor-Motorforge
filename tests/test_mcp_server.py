@@ -122,6 +122,50 @@ def main() -> int:
             }),
         ]
         second = run_server(server, args.motorforge, workspace, second_batch)
+        inspected_for_mutation = tool_payload(second[11])
+            updated_batch = [
+                request(13, "tools/call", {
+                    "name": "entity_update",
+                    "arguments": {
+                        "project_path": "sample-project",
+                        "scene_id": "main-scene",
+                        "id": "factory",
+                        "name": "Factory Updated",
+                        "expected_revision": inspected["revision"],
+                        "x": 21,
+                        "y": 9,
+                    },
+                }),
+                request(14, "tools/call", {
+                    "name": "scene_inspect",
+                    "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
+                }),
+            ]
+            updated_responses = run_server(server, args.motorforge, workspace, updated_batch)
+            assert updated_responses[13]["result"]["isError"] is False
+            updated = tool_payload(updated_responses[13])
+            assert updated["result"]["entity"]["name"] == "Factory Updated"
+            assert updated["result"]["entity"]["components"]["transform"]["x"] == 21
+        
+            deleted_batch = [
+                request(15, "tools/call", {
+                    "name": "entity_delete",
+                    "arguments": {
+                        "project_path": "sample-project",
+                        "scene_id": "main-scene",
+                        "id": "factory",
+                        "expected_revision": tool_payload(updated_responses[14])["revision"],
+                    },
+                }),
+                request(16, "tools/call", {
+                    "name": "scene_inspect",
+                    "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
+                }),
+            ]
+            deleted_responses = run_server(server, args.motorforge, workspace, deleted_batch)
+            assert deleted_responses[15]["result"]["isError"] is False
+            assert tool_payload(deleted_responses[15])["result"]["deleted_entity_id"] == "factory"
+            assert tool_payload(deleted_responses[16])["result"]["entities"] == []
         generated_svg = (workspace / "sample-project" / "assets" / "factory.svg").read_text(encoding="utf-8")
 
     initialized = first[1]["result"]
@@ -171,49 +215,7 @@ def main() -> int:
     listed = tool_payload(second[12])
     assert len(listed["result"]["scenes"]) == 1
 
-    updated_batch = [
-        request(13, "tools/call", {
-            "name": "entity_update",
-            "arguments": {
-                "project_path": "sample-project",
-                "scene_id": "main-scene",
-                "id": "factory",
-                "name": "Factory Updated",
-                "expected_revision": inspected["revision"],
-                "x": 21,
-                "y": 9,
-            },
-        }),
-        request(14, "tools/call", {
-            "name": "scene_inspect",
-            "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
-        }),
-    ]
-    updated_responses = run_server(server, args.motorforge, workspace, updated_batch)
-    assert updated_responses[13]["result"]["isError"] is False
-    updated = tool_payload(updated_responses[13])
-    assert updated["result"]["entity"]["name"] == "Factory Updated"
-    assert updated["result"]["entity"]["components"]["transform"]["x"] == 21
 
-    deleted_batch = [
-        request(15, "tools/call", {
-            "name": "entity_delete",
-            "arguments": {
-                "project_path": "sample-project",
-                "scene_id": "main-scene",
-                "id": "factory",
-                "expected_revision": tool_payload(updated_responses[14])["revision"],
-            },
-        }),
-        request(16, "tools/call", {
-            "name": "scene_inspect",
-            "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
-        }),
-    ]
-    deleted_responses = run_server(server, args.motorforge, workspace, deleted_batch)
-    assert deleted_responses[15]["result"]["isError"] is False
-    assert tool_payload(deleted_responses[15])["result"]["deleted_entity_id"] == "factory"
-    assert tool_payload(deleted_responses[16])["result"]["entities"] == []
 
     print("MCP adapter integration tests passed.")
     return 0
