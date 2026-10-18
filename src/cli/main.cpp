@@ -28,7 +28,9 @@ void print_help() {
         << "  motorforge scene list <project> [--json]\n"
         << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
         << "  motorforge scene inspect <project> <scene-id> [--json]\n"
-        << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n\n"
+        << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
+        << "  motorforge entity update <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --x <number> --y <number> [--json]\n"
+        << "  motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> [--json]\n\n"
         << "The CLI contract is version " << motorforge::contract_version() << ".\n";
 }
 
@@ -229,13 +231,74 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "entity") {
-        if (argc < 5 || std::string_view{argv[2]} != "create") {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--json]'.\n";
+        if (argc < 5) {
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge entity <create|update|delete> <project> <scene-id> ...'.\n";
             return 2;
         }
 
         const std::string project{argv[3]};
         const std::string scene_id{argv[4]};
+        const std::string_view entity_action{argv[2]};
+        if (entity_action == "update" || entity_action == "delete") {
+            std::string id;
+            std::string name;
+            std::string expected_revision;
+            double x = 0.0;
+            double y = 0.0;
+            bool has_x = false;
+            bool has_y = false;
+            bool json_output = false;
+            for (int index = 5; index < argc; ++index) {
+                const std::string_view option{argv[index]};
+                if (option == "--json") {
+                    json_output = true;
+                } else if (option == "--id" && index + 1 < argc) {
+                    id = argv[++index];
+                } else if (option == "--name" && index + 1 < argc) {
+                    name = argv[++index];
+                } else if (option == "--expected-revision" && index + 1 < argc) {
+                    expected_revision = argv[++index];
+                } else if (option == "--x" && index + 1 < argc) {
+                    if (!parse_number(argv[++index], x)) {
+                        std::cerr << "error[INVALID_TRANSFORM]: x must be a finite number.\n";
+                        return 2;
+                    }
+                    has_x = true;
+                } else if (option == "--y" && index + 1 < argc) {
+                    if (!parse_number(argv[++index], y)) {
+                        std::cerr << "error[INVALID_TRANSFORM]: y must be a finite number.\n";
+                        return 2;
+                    }
+                    has_y = true;
+                } else {
+                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
+                    return 2;
+                }
+            }
+            if (id.empty() || expected_revision.empty()) {
+                std::cerr << "error[ARGUMENT_REQUIRED]: --id and --expected-revision are required.\n";
+                return 2;
+            }
+            if (entity_action == "update") {
+                if (name.empty() || !has_x || !has_y) {
+                    std::cerr << "error[ARGUMENT_REQUIRED]: entity update requires --name, --x, and --y.\n";
+                    return 2;
+                }
+                return report_scene_result(
+                    motorforge::update_entity(project, scene_id, id, name, x, y, expected_revision),
+                    json_output);
+            }
+            if (!name.empty() || has_x || has_y) {
+                std::cerr << "error[INVALID_ARGUMENT]: entity delete accepts only --id, --expected-revision, and --json.\n";
+                return 2;
+            }
+            return report_scene_result(
+                motorforge::delete_entity(project, scene_id, id, expected_revision), json_output);
+        }
+        if (entity_action != "create") {
+            std::cerr << "error[UNKNOWN_ENTITY_ACTION]: unknown entity action '" << entity_action << "'.\n";
+            return 2;
+        }
         std::string id;
         std::string name;
         std::string sprite;
