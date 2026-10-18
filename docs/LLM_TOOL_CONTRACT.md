@@ -34,6 +34,7 @@ Agents must be able to ask the tool surface:
 - `--version`: engine and contract versions.
 - `capabilities --json`: machine-readable list of implemented commands.
 - `validate <project-directory-or-project.json> [--json]`: validate a project manifest.
+- `init <new-directory> --name <name> [--id <id>] [--json]`: create a project without overwriting an existing destination.
 
 Examples:
 
@@ -42,13 +43,16 @@ motorforge --help
 motorforge --version
 motorforge capabilities --json
 motorforge validate examples/empty-project --json
+motorforge init ./MyGame --name "My Game" --json
 ```
 
 The validator currently checks core invariants: supported schema version, project ID and name, engine minimum version format, and settings object type. The versioned schema lives at `schemas/project.schema.json`. Full JSON Schema conformance validation and migration tooling are future work.
 
+The initializer creates a version 1 manifest with deterministic defaults. If no ID is provided, it derives a lowercase ASCII slug from the display name. It refuses to overwrite an existing destination. Creation results and validation results include `contract_version` and machine-readable status fields.
+
 ## Validation response
 
-A successful response includes `contract_version`, `ok`, `manifest_path`, `project`, and a `diagnostics` array. Each diagnostic has a stable `code`, a readable `message`, and a `location`.
+A successful validation response includes `contract_version`, `ok`, `manifest_path`, `project`, and a `diagnostics` array. Each diagnostic has a stable `code`, a readable `message`, and a `location`.
 
 Example failure shape:
 
