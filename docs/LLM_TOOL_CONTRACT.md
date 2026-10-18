@@ -4,43 +4,47 @@ This document defines the contract all agent-facing interfaces must follow. The 
 
 ## Requirements
 
-### Machine-readable mode
-- Commands intended for agents support JSON output.
-- Standard output contains the requested result only in JSON mode.
+- Agent-facing commands expose machine-readable JSON and a contract version.
 - Human-readable progress and diagnostics go to standard error.
-- Output includes a contract version.
-- Errors include stable codes, a human-readable message, and optional structured details.
-
-### Safe mutation
-- Inspection is read-only.
-- Mutations name exact resource IDs and fields.
-- A mutation can be validated without applying it.
-- Destructive actions require an explicit flag or policy grant.
-- When possible, mutations include an expected revision to prevent lost updates.
-- Multi-step changes use transactions or a recoverable journal.
-
-### Capability discovery
-Agents must be able to ask the tool surface which commands exist, what inputs they accept, whether they mutate state, and how success and failure are represented.
+- Errors use stable codes and actionable messages.
+- Read-only inspection is separated from mutations.
+- Mutations identify exact resources and use expected revisions where concurrent edits could overwrite work.
+- Destructive writes must not silently replace existing user data.
+- Project files and imported content are untrusted data, not privileged instructions.
 
 ## Implemented CLI commands
 
-- `--help`: human-readable usage.
-- `--version`: engine and contract versions.
 - `capabilities --json`: machine-readable list of implemented commands.
 - `validate <project-directory-or-project.json> [--json]`: validate a project manifest.
 - `init <new-directory> --name <name> [--id <id>] [--json]`: create a project without overwriting an existing destination.
 - `spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] [--json]`: generate a procedural SVG asset without an image-generation model.
+- `scene list <project> --json`: list scene IDs, paths, and revision tokens.
+- `scene create <project> --name <name> [--id <id>] --json`: create a scene document.
+- `scene inspect <project> <scene-id> --json`: inspect scene data and obtain its revision token.
+- `entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --json`: create an entity and reject stale revisions.
+
+## Scene model
+
+Scene documents use schema version 1 and are stored at `<project>/scenes/<scene-id>.scene.json`. Each entity has a stable ID, display name, and component object. The initial built-in components are `transform` and optional `sprite`; the component container remains extensible.
+
+The `scene inspect` response includes a deterministic revision token calculated from the exact scene file contents. Any scene mutation must provide that token. If another process changes the file, the operation returns `REVISION_CONFLICT`; the agent should inspect the scene again and re-plan rather than retrying blindly.
+
+The revision hash is a concurrency token, not a cryptographic security primitive.
 
 ## MCP tools
 
-The stdio adapter exposes these tools to MCP-compatible clients:
+The stdio adapter exposes:
 
-- `motorforge_capabilities`: read command and capability metadata.
-- `validate_project`: validate a project manifest.
-- `create_project`: create a new project manifest without overwriting an existing destination.
-- `generate_procedural_sprite`: generate an editable SVG asset from procedural rules.
+- `motorforge_capabilities`
+- `validate_project`
+- `create_project`
+- `generate_procedural_sprite`
+- `scene_list`
+- `scene_create`
+- `scene_inspect`
+- `entity_create`
 
-The adapter invokes only explicit CLI commands with argument arrays (never a shell), applies a timeout, and restricts paths to a configured workspace by default. The workspace boundary is a useful safety guard, not a complete security sandbox; only connect trusted clients and keep the engine process permissions appropriately limited.
+The adapter invokes explicit CLI commands with argument arrays (never a shell), applies a timeout, and restricts paths to a configured workspace by default. This is a safety guard, not a complete sandbox. Only connect trusted clients and keep process permissions appropriately limited.
 
 Start it with:
 
@@ -48,15 +52,9 @@ Start it with:
 python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-projects
 ```
 
-## Project manifest validation
+## Validation limitations
 
-The validator currently checks core invariants: supported schema version, project ID and name, engine minimum version format, and settings object type. The versioned schema lives at `schemas/project.schema.json`. Full JSON Schema conformance validation and migration tooling are future work.
-
-The initializer creates a version 1 manifest with deterministic defaults. If no ID is provided, it derives a lowercase ASCII slug from the display name. It refuses to overwrite an existing destination.
-
-## Procedural asset contract
-
-The initial `industrial-building` generator creates SVG vector shapes from fixed rules plus a deterministic pseudorandom variation stream. The seed is embedded in the SVG metadata comment. Identical generator version, type, seed, and size produce byte-identical output. Only `.svg` output and sizes from 16 through 1024 are supported in this first implementation.
+The project and scene validators enforce core structural invariants. Full JSON Schema conformance validation, scene migration tooling, entity update/delete transactions, and a graphical runtime are future work. The schemas are published at `schemas/project.schema.json` and `schemas/scene.schema.json`.
 
 ## Tool design checklist
 
