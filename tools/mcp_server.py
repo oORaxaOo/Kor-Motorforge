@@ -65,6 +65,62 @@ TOOLS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "scene_list",
+        "description": "List scenes in a project and return revision tokens.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"project_path": {"type": "string", "minLength": 1}},
+            "required": ["project_path"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "scene_create",
+        "description": "Create a new scene in a project. Existing scene IDs are never overwritten.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "name": {"type": "string", "minLength": 1},
+                "id": {"type": "string"},
+            },
+            "required": ["project_path", "name"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "scene_inspect",
+        "description": "Inspect a scene and retrieve the revision token required for safe entity mutations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+            },
+            "required": ["project_path", "scene_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "entity_create",
+        "description": "Create an entity with transform and optional sprite component. Requires the latest scene revision token.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1},
+                "id": {"type": "string", "minLength": 1},
+                "name": {"type": "string", "minLength": 1},
+                "expected_revision": {"type": "string", "minLength": 1},
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "sprite_asset": {"type": "string"},
+            },
+            "required": ["project_path", "scene_id", "id", "name", "expected_revision"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -172,6 +228,58 @@ def call_tool(name: str, arguments: Any, executable: Path,
             executable,
             ["spritegen", str(path), "--type", sprite_type, "--seed", str(seed), "--size", str(size), "--json"],
         )
+    elif name in {"scene_list", "scene_create", "scene_inspect", "entity_create"}:
+        project_path = resolve_workspace_path(arguments.get("project_path"), workspace, allow_external)
+        if name == "scene_list":
+            if set(arguments) != {"project_path"}:
+                raise ToolFailure("INVALID_ARGUMENTS", "scene_list accepts only project_path.")
+            command = ["scene", "list", str(project_path), "--json"]
+        elif name == "scene_create":
+            if set(arguments) - {"project_path", "name", "id"} or "name" not in arguments:
+                raise ToolFailure("INVALID_ARGUMENTS", "scene_create requires project_path and name; id is optional.")
+            scene_name = arguments.get("name")
+            scene_id = arguments.get("id")
+            if not isinstance(scene_name, str) or not scene_name.strip():
+                raise ToolFailure("INVALID_SCENE_NAME", "name must be a non-empty string.")
+            if scene_id is not None and not isinstance(scene_id, str):
+                raise ToolFailure("INVALID_SCENE_ID", "id must be a string when provided.")
+            command = ["scene", "create", str(project_path), "--name", scene_name, "--json"]
+            if scene_id:
+                command.extend(["--id", scene_id])
+        elif name == "scene_inspect":
+            if set(arguments) != {"project_path", "scene_id"}:
+                raise ToolFailure("INVALID_ARGUMENTS", "scene_inspect requires project_path and scene_id.")
+            scene_id = arguments.get("scene_id")
+            if not isinstance(scene_id, str) or not scene_id:
+                raise ToolFailure("INVALID_SCENE_ID", "scene_id must be a non-empty string.")
+            command = ["scene", "inspect", str(project_path), scene_id, "--json"]
+        else:
+            allowed = {"project_path", "scene_id", "id", "name", "expected_revision", "x", "y", "sprite_asset"}
+            required = {"project_path", "scene_id", "id", "name", "expected_revision"}
+            if set(arguments) - allowed or not required <= set(arguments):
+                raise ToolFailure("INVALID_ARGUMENTS", "entity_create requires project_path, scene_id, id, name, expected_revision; x, y, and sprite_asset are optional.")
+            scene_id = arguments["scene_id"]
+            entity_id = arguments["id"]
+            entity_name = arguments["name"]
+            expected_revision = arguments["expected_revision"]
+            x = arguments.get("x", 0.0)
+            y = arguments.get("y", 0.0)
+            sprite_asset = arguments.get("sprite_asset", "")
+            if not all(isinstance(value, str) and value for value in (scene_id, entity_id, entity_name, expected_revision)):
+                raise ToolFailure("INVALID_ARGUMENTS", "scene_id, id, name, and expected_revision must be non-empty strings.")
+            if isinstance(x, bool) or not isinstance(x, (int, float)) or isinstance(y, bool) or not isinstance(y, (int, float)):
+                raise ToolFailure("INVALID_TRANSFORM", "x and y must be numbers.")
+            if not isinstance(sprite_asset, str):
+                raise ToolFailure("INVALID_ASSET_PATH", "sprite_asset must be a string.")
+            command = [
+                "entity", "create", str(project_path), scene_id,
+                "--id", entity_id, "--name", entity_name,
+                "--expected-revision", expected_revision,
+                "--x", str(x), "--y", str(y), "--json",
+            ]
+            if sprite_asset:
+                command.extend(["--sprite", sprite_asset])
+        return_code, output = invoke_motorforge(executable, command)
     else:
         raise ToolFailure("UNKNOWN_TOOL", f"Unknown Motorforge tool: {name}")
 
