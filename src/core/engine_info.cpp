@@ -63,6 +63,34 @@ std::string_view capabilities_json() noexcept {
       "description": "Generate a deterministic, editable industrial-building SVG without image-generation models.",
       "mutates_state": true,
       "status": "implemented"
+    },
+    {
+      "name": "scene.list",
+      "invocation": "motorforge scene list <project> --json",
+      "description": "List valid scenes and their current revision tokens.",
+      "mutates_state": false,
+      "status": "implemented"
+    },
+    {
+      "name": "scene.create",
+      "invocation": "motorforge scene create <project> --name <name> [--id <id>] --json",
+      "description": "Create a versioned scene document without overwriting existing scenes.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
+      "name": "scene.inspect",
+      "invocation": "motorforge scene inspect <project> <scene-id> --json",
+      "description": "Read scene data and its revision token before making edits.",
+      "mutates_state": false,
+      "status": "implemented"
+    },
+    {
+      "name": "entity.create",
+      "invocation": "motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --json",
+      "description": "Create an entity using optimistic concurrency and a relative asset path.",
+      "mutates_state": true,
+      "status": "implemented"
     }
   ]
 })json";
