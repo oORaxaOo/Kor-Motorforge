@@ -91,6 +91,27 @@ std::string_view capabilities_json() noexcept {
       "description": "Create an entity using optimistic concurrency and a relative asset path.",
       "mutates_state": true,
       "status": "implemented"
+    },
+    {
+      "name": "entity.update",
+      "invocation": "motorforge entity update <project> <scene-id> --id <id> --name <name> --x <number> --y <number> --expected-revision <revision> --json",
+      "description": "Update entity name and position with revision checking.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
+      "name": "entity.delete",
+      "invocation": "motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> --json",
+      "description": "Delete an entity with revision checking.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
+      "name": "runtime.inspect",
+      "invocation": "motorforge runtime inspect <project> <scene-id> --json",
+      "description": "Load and validate a scene in headless mode and resolve SVG sprite assets.",
+      "mutates_state": false,
+      "status": "implemented"
     }
   ]
 })json";
