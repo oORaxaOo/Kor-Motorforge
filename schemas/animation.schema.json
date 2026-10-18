@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kor-motorforge.dev/schemas/animation.schema.json",
+  "title": "Kor Motorforge Animation Asset",
+  "description": "Versioned, renderer-independent animation manifest for AI-generated sprite assets. Pixel data stays in referenced image files; this document defines deterministic playback and atlas layout.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "source",
+    "frame_size",
+    "clips"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project-relative path to a PNG, WebP, or other supported image atlas. Paths must be resolved by the host under the project asset root."
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "ai-generated",
+            "procedural",
+            "hand-authored",
+            "imported"
+          ]
+        },
+        "generator": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "source_asset_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+          },
+          "uniqueItems": true
+        },
+        "created_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "frame_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
+      }
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "spacing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "margin": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "clips": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "frames"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+          },
+          "loop": {
+            "type": "boolean",
+            "default": true
+          },
+          "fps": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 240,
+            "default": 12
+          },
+          "playback": {
+            "enum": [
+              "forward",
+              "reverse",
+              "ping-pong"
+            ],
+            "default": "forward"
+          },
+          "anchor": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "frames": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x",
+                "y"
+              ],
+              "properties": {
+                "x": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "duration_ms": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60000
+                },
+                "event": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "directions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "north",
+          "north-east",
+          "east",
+          "south-east",
+          "south",
+          "south-west",
+          "west",
+          "north-west"
+        ]
+      }
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

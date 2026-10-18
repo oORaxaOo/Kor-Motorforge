@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap is a sequence of acceptance-tested capabilities, not a promise that every milestone is already implemented.
+This roadmap is a sequence of acceptance-tested capabilities, not a promise that every milestone is already implemented. Motorforge is AI-agent infrastructure first: stable machine-readable contracts, deterministic operations, safe project mutation, asset generation and verification take priority over a human-facing editor.
 
 ## M0 — Repository foundation
 - [x] Project charter and design goals
@@ -15,67 +15,61 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Structured diagnostics foundation
 - [x] Project manifest parser and core validation
 - [x] Safe project initialization with overwrite protection
-- [x] Stable error codes and JSON output tests
 - [ ] Full JSON Schema conformance validation
 
 ## M2 — Project and scene model
-- [x] Versioned project manifest
-- [x] Versioned scene document and schema
+- [x] Versioned project manifest and scene document
 - [x] Stable scene/entity IDs and component containers
 - [x] Scene list/create/inspect operations
-- [x] Entity creation with transform and optional sprite component
-- [x] Optimistic concurrency checks using scene revision tokens
+- [x] Entity CRUD with optimistic revision checks
+- [x] Atomic scene patch planning and application
 - [ ] Schema migration strategy
-- [x] Entity update/delete transactions with revision checks and atomic file replacement
 
-## M3 — Safe editing API
+## M3 — Safe agent mutation
 - [x] Read-only scene inspection
-- [x] Revision-checked entity creation
+- [x] Revision-checked entity mutations
 - [x] Plan/diff/apply transaction model for atomic entity create/update/delete batches
 - [ ] Persistent undo/rollback journal
-- [ ] Undo/rollback journal
 - [ ] Full JSON Schema validation for tool inputs and outputs
 
 ## M4 — Minimal runtime
-- [ ] Window and platform abstraction
-- [ ] 2D renderer and camera
-- [ ] Input mapping
 - [x] Headless scene loading and runtime snapshot validation
-- [x] Portable static SVG scene preview with embedded SVG sprites
-- [x] Self-contained HTML scene inspector with selectable entity hierarchy, transform metadata, pan, zoom, and reset controls
-- [ ] Native windowed scene preview and pixel rendering
+- [x] Portable static SVG scene preview
+- [x] Optional self-contained HTML diagnostic inspector
+- [ ] Deterministic runtime tick with machine-readable results
+- [ ] Native 2D renderer and camera
+- [ ] Input mapping
 
-## M5 — Procedural content
-- [x] Deterministic seeded SVG generator
-- [x] First editable industrial-building sprite family
-- [ ] Sprite palette and geometry controls
-- [ ] Additional building, vehicle, character, and terrain generators
-- [ ] Mesh and modular geometry generation
-- [ ] Material/shader parameter system
-- [ ] Asset metadata, provenance, and reproducible regeneration
+## M5 — AI asset pipeline (priority)
+- [x] Deterministic seeded SVG generator for initial industrial-building sprite family
+- [x] Versioned animation-asset manifest contract (frame atlas, clips, directions, anchors, frame events, provenance)
+- [ ] Asset manifest validator with path containment and atlas-bound checks
+- [ ] Image import and metadata probing
+- [ ] Deterministic atlas packing and extraction
+- [ ] Frame slicing, transparent-background processing and asset validation
+- [ ] Animation clip inspection and deterministic preview/export
+- [ ] More procedural generators: UI components, vehicles, characters, terrain and effects
+- [ ] Optional image-model provider adapters; generation provider remains separate from deterministic processing
 
 ## M6 — Agent integration
-- [x] CLI command discovery
-- [x] Stdio MCP adapter and integration tests
+- [x] CLI command discovery and stdio MCP adapter
 - [x] Workspace path boundary for MCP tools
-- [x] Project and procedural asset tools exposed through MCP
-- [x] Scene and entity tools exposed through MCP
-- [x] Headless runtime inspection exposed through MCP
-- [ ] Expand tool surface to asset registry and interactive runtime operations
+- [x] Project, procedural asset, scene, entity and runtime inspection tools
+- [x] AI-facing atomic scene patch with dry-run and revision checks
+- [ ] Asset registry, animation tools and generated-asset import over MCP
 - [ ] Richer permission policies and sandbox boundaries
 
-## M7 — Editor and extensibility
-- [x] Optional read-only scene hierarchy inspector export (diagnostic only; not a required human workflow)
-- [x] AI-facing scene patch operations with dry-run diff and revision-checked atomic persistence
-- [ ] Asset browser and generator graph
+## M7 — Runtime and extensibility
+- [ ] Animation playback runtime and events
+- [ ] UI layout/component schema and deterministic UI asset generation
 - [ ] Plugin API and scripting interface
-- [ ] UI, audio, navigation, animation, physics integrations
+- [ ] Audio, navigation and physics integrations
 - [ ] Import/export and project packaging
 
 ## Release gates
 A milestone is complete only when:
-1. Its acceptance criteria are documented.
-2. Automated tests cover the important success and failure paths.
-3. The documented commands work in CI.
+1. Acceptance criteria are documented.
+2. Automated tests cover success, malformed input, boundary cases and failure paths.
+3. Documented commands work in CI.
 4. Machine-readable output is stable and versioned.
 5. Known limitations are documented.

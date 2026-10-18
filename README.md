@@ -17,6 +17,7 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Entity creation, transform/name updates, and deletion with optimistic revision checks; stale writes are rejected.
 - An AI-first scene patch API: plan/diff a batch of entity creates, updates, and deletes, then apply the entire validated batch atomically using one expected revision.
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
+- A versioned, renderer-independent animation manifest contract for AI-generated sprite atlases, named clips, directions, frame events, anchors, and provenance (`schemas/animation.schema.json`).
 - A headless runtime that loads scenes, validates transforms, resolves SVG sprite assets, and returns a machine-readable runtime snapshot.
 - A portable SVG scene-preview renderer with world axes, grid, entity markers, transform placement, and embedded sprite assets.
 - A self-contained HTML scene editor in inspect mode with a selectable scene hierarchy, entity property inspector (ID, position, rotation, scale), pointer-based pan, mouse-wheel zoom, keyboard shortcuts, and reset controls; no server or browser dependencies are required.
@@ -24,7 +25,7 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The runtime still has no native game window, real-time simulation loop, or live renderer. The HTML scene inspector is an optional diagnostic artifact, not a required human-facing editor. The primary workflow is machine-readable CLI/MCP operations; batch patches can be previewed and committed without opening a GUI. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
+The runtime still has no native game window, real-time simulation loop, or live renderer. The animation manifest is currently a data contract only: atlas image probing, bounds validation, slicing, animation playback, and image-model provider integration are not yet implemented. The HTML scene inspector is an optional diagnostic artifact, not a required human-facing editor. The primary workflow is machine-readable CLI/MCP operations; batch patches can be previewed and committed without opening a GUI. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
@@ -102,7 +103,7 @@ Configure your MCP client to launch that command. The workspace directory must a
 
 ## Planned milestones
 
-See [ROADMAP.md](ROADMAP.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), [Scene Schema](schemas/scene.schema.json), [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md), and [AI coding agent instructions](AGENTS.md).
+See [ROADMAP.md](ROADMAP.md), [AI Asset and Animation Contract](docs/ASSET_PIPELINE.md), [Architecture](docs/ARCHITECTURE.md), [Project Schema](schemas/project.schema.json), [Scene Schema](schemas/scene.schema.json), [LLM Tool Contract](docs/LLM_TOOL_CONTRACT.md), and [AI coding agent instructions](AGENTS.md).
 
 ## Development principles
 
