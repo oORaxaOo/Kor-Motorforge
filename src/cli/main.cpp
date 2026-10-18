@@ -233,16 +233,16 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "runtime") {
-        if (argc < 4 || std::string_view{argv[2]} != "inspect") {
+        if (argc < 5 || std::string_view{argv[2]} != "inspect") {
             std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge runtime inspect <project> <scene-id> [--json]'\n";
             return 2;
         }
-        const bool json_output = argc >= 5 && std::string_view{argv[4]} == "--json";
-        if (argc > 5 || (argc == 5 && !json_output)) {
+        const bool json_output = argc == 6 && std::string_view{argv[5]} == "--json";
+        if (argc > 6 || (argc == 6 && !json_output)) {
             std::cerr << "error[INVALID_ARGUMENT]: unexpected runtime inspect argument\n";
             return 2;
         }
-        const auto result = motorforge::inspect_runtime(argv[3 - 1], argv[3]);
+        const auto result = motorforge::inspect_runtime(argv[3], argv[4]);
         return report_scene_result({result.ok, result.message, result.json, {}}, json_output);
     }
 
