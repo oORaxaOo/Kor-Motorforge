@@ -107,6 +107,13 @@ std::string_view capabilities_json() noexcept {
       "status": "implemented"
     },
     {
+      "name": "preview.render",
+      "invocation": "motorforge preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] --json",
+      "description": "Export a portable static SVG scene preview with embedded sprite assets.",
+      "mutates_state": true,
+      "status": "implemented"
+    },
+    {
       "name": "runtime.inspect",
       "invocation": "motorforge runtime inspect <project> <scene-id> --json",
       "description": "Load and validate a scene in headless mode and resolve SVG sprite assets.",
