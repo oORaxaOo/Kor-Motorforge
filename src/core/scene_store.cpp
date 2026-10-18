@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iomanip>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -648,6 +649,169 @@ SceneCommandResult delete_entity(std::string_view project_path,
                                  std::string_view expected_revision) {
     return mutate_entity(project_path, scene_id, entity_id, expected_revision,
                          true, {}, 0.0, 0.0);
+}
+
+
+SceneCommandResult apply_scene_patch(std::string_view project_path,
+                                     std::string_view scene_id,
+                                     std::string_view patch_json,
+                                     std::string_view expected_revision,
+                                     bool dry_run) {
+    const std::filesystem::path project{project_path};
+    SceneCommandResult project_error;
+    if (!validate_project_root(project, project_error)) return project_error;
+    if (!valid_id(scene_id)) return failure("INVALID_SCENE_ID", "Scene ID format is invalid.");
+    if (expected_revision.empty()) return failure("EXPECTED_REVISION_REQUIRED", "Scene patches require the latest revision returned by scene inspect.");
+    if (patch_json.empty() || patch_json.size() > 1024 * 1024)
+        return failure("INVALID_SCENE_PATCH", "Patch JSON must be non-empty and no larger than 1 MiB.");
+
+    Json patch;
+    try { patch = Json::parse(patch_json); }
+    catch (const Json::parse_error& error) { return failure("INVALID_SCENE_PATCH_JSON", error.what()); }
+    if (!patch.is_object() || patch.size() != 1 || !patch.contains("operations") || !patch["operations"].is_array())
+        return failure("INVALID_SCENE_PATCH", "Patch must be an object containing only an operations array.");
+    const auto& operations = patch["operations"];
+    if (operations.empty() || operations.size() > 256)
+        return failure("INVALID_SCENE_PATCH", "Patch must contain between 1 and 256 operations.");
+
+    const auto path = scene_path(project, scene_id);
+    std::string content, code, message;
+    if (!read_text(path, content, code, message))
+        return failure("SCENE_NOT_FOUND", "Could not find the requested scene.", path.generic_string());
+    const std::string current_revision = hash_revision(content);
+    if (current_revision != expected_revision)
+        return failure("REVISION_CONFLICT", "Scene changed since it was inspected. Inspect it again and re-plan the patch.", path.generic_string());
+
+    Json document;
+    if (!parse_scene(content, document, code, message)) return failure(code, message, path.generic_string());
+    if (document["scene"]["id"].get<std::string>() != scene_id)
+        return failure("SCENE_ID_MISMATCH", "Scene ID inside the file does not match its filename.", path.generic_string());
+
+    Json changes = Json::array();
+    std::set<std::string> touched_ids;
+    auto& entities = document["entities"];
+    const auto find_entity = [&entities](const std::string& id) {
+        return std::find_if(entities.begin(), entities.end(), [&id](const Json& entity) {
+            return entity["id"].get<std::string>() == id;
+        });
+    };
+    const auto finite_number = [](const Json& value) {
+        return value.is_number() && std::isfinite(value.get<double>());
+    };
+    const std::set<std::string> transform_keys{"x", "y", "rotation", "scale_x", "scale_y"};
+
+    for (const auto& operation : operations) {
+        if (!operation.is_object() || !operation.contains("op") || !operation["op"].is_string())
+            return failure("INVALID_PATCH_OPERATION", "Each operation must be an object with a string op field.");
+        const std::string op = operation["op"].get<std::string>();
+        if (op == "create") {
+            if (operation.size() != 2 || !operation.contains("entity") || !operation["entity"].is_object())
+                return failure("INVALID_PATCH_OPERATION", "Create operations require only op and entity fields.");
+            Json entity = operation["entity"];
+            if (!entity.contains("id") || !entity["id"].is_string() || !entity.contains("name") || !entity["name"].is_string())
+                return failure("INVALID_PATCH_ENTITY", "Created entities require string id and name fields.");
+            const std::string id = entity["id"].get<std::string>();
+            if (!valid_id(id)) return failure("INVALID_ENTITY_ID", "Entity ID format is invalid.");
+            if (entity["name"].get<std::string>().empty()) return failure("ENTITY_NAME_REQUIRED", "Entity name must not be empty.");
+            if (entity.size() > 3 || (entity.contains("components") && !entity["components"].is_object()))
+                return failure("INVALID_PATCH_ENTITY", "Created entities may contain only id, name, and an object components field.");
+            if (!touched_ids.insert(id).second)
+                return failure("DUPLICATE_PATCH_TARGET", "A patch may target each entity ID only once: " + id);
+            if (find_entity(id) != entities.end()) return failure("ENTITY_ALREADY_EXISTS", "An entity with ID '" + id + "' already exists.");
+
+            Json components = entity.value("components", Json::object());
+            if (!components.is_object()) return failure("INVALID_PATCH_ENTITY", "Entity components must be an object.");
+            Json transform = components.value("transform", Json::object());
+            if (!transform.is_object()) return failure("INVALID_TRANSFORM", "Created entity transform must be an object.");
+            for (auto it = transform.begin(); it != transform.end(); ++it) {
+                if (!transform_keys.contains(it.key()) || !finite_number(it.value()))
+                    return failure("INVALID_TRANSFORM", "Transform fields must be finite numbers named x, y, rotation, scale_x, or scale_y.");
+            }
+            components["transform"] = {
+                {"x", transform.value("x", 0.0)}, {"y", transform.value("y", 0.0)},
+                {"rotation", transform.value("rotation", 0.0)},
+                {"scale_x", transform.value("scale_x", 1.0)}, {"scale_y", transform.value("scale_y", 1.0)}
+            };
+            if (components.contains("sprite")) {
+                const auto& sprite = components["sprite"];
+                if (!sprite.is_object() || !sprite.contains("asset") || !sprite["asset"].is_string() || sprite["asset"].get<std::string>().empty())
+                    return failure("INVALID_ASSET_PATH", "Sprite component must contain a non-empty relative asset path.");
+                const std::filesystem::path asset{sprite["asset"].get<std::string>()};
+                if (asset.is_absolute()) return failure("INVALID_ASSET_PATH", "Sprite asset path must be relative to the project.");
+                for (const auto& part : asset) if (part == "..")
+                    return failure("INVALID_ASSET_PATH", "Sprite asset path must not escape the project directory.");
+                std::error_code ec;
+                const auto canonical_project = std::filesystem::weakly_canonical(project, ec);
+                if (ec) return failure("PROJECT_PATH_RESOLUTION_FAILED", "Could not resolve project directory for asset validation.");
+                const auto canonical_asset = std::filesystem::weakly_canonical(project / asset, ec);
+                if (ec) return failure("INVALID_ASSET_PATH", "Could not resolve sprite asset path.");
+                const auto relative = canonical_asset.lexically_relative(canonical_project);
+                if (relative.empty() || relative.is_absolute() || relative.begin()->string() == ".." ||
+                    !std::filesystem::is_regular_file(canonical_asset, ec) || ec)
+                    return failure("ASSET_NOT_FOUND_OR_UNSAFE", "Sprite asset must exist as a regular file inside the project.");
+            }
+            entity["components"] = std::move(components);
+            entities.push_back(entity);
+            changes.push_back({{"op", op}, {"id", id}, {"before", nullptr}, {"after", entity}});
+        } else if (op == "update") {
+            if (operation.size() != 3 || !operation.contains("id") || !operation["id"].is_string() ||
+                !operation.contains("set") || !operation["set"].is_object() || operation["set"].empty())
+                return failure("INVALID_PATCH_OPERATION", "Update operations require op, string id, and a non-empty set object.");
+            const std::string id = operation["id"].get<std::string>();
+            if (!valid_id(id)) return failure("INVALID_ENTITY_ID", "Entity ID format is invalid.");
+            if (!touched_ids.insert(id).second) return failure("DUPLICATE_PATCH_TARGET", "A patch may target each entity ID only once: " + id);
+            auto found = find_entity(id);
+            if (found == entities.end()) return failure("ENTITY_NOT_FOUND", "Could not find entity '" + id + "'.");
+            const Json before = *found;
+            for (auto field = operation["set"].begin(); field != operation["set"].end(); ++field) {
+                if (field.key() == "name") {
+                    if (!field.value().is_string() || field.value().get<std::string>().empty())
+                        return failure("INVALID_ENTITY_NAME", "Updated entity name must be a non-empty string.");
+                    (*found)["name"] = field.value();
+                } else if (field.key() == "transform") {
+                    if (!field.value().is_object() || field.value().empty())
+                        return failure("INVALID_TRANSFORM", "Transform updates must be a non-empty object.");
+                    if (!(*found).contains("components") || !(*found)["components"].contains("transform") ||
+                        !(*found)["components"]["transform"].is_object())
+                        return failure("ENTITY_TRANSFORM_MISSING", "Entity has no transform component to update.");
+                    for (auto value = field.value().begin(); value != field.value().end(); ++value) {
+                        if (!transform_keys.contains(value.key()) || !finite_number(value.value()))
+                            return failure("INVALID_TRANSFORM", "Transform fields must be finite numbers named x, y, rotation, scale_x, or scale_y.");
+                        (*found)["components"]["transform"][value.key()] = value.value();
+                    }
+                } else {
+                    return failure("INVALID_PATCH_FIELD", "Update set supports only name and transform fields.");
+                }
+            }
+            changes.push_back({{"op", op}, {"id", id}, {"before", before}, {"after", *found}});
+        } else if (op == "delete") {
+            if (operation.size() != 2 || !operation.contains("id") || !operation["id"].is_string())
+                return failure("INVALID_PATCH_OPERATION", "Delete operations require only op and string id fields.");
+            const std::string id = operation["id"].get<std::string>();
+            if (!valid_id(id)) return failure("INVALID_ENTITY_ID", "Entity ID format is invalid.");
+            if (!touched_ids.insert(id).second) return failure("DUPLICATE_PATCH_TARGET", "A patch may target each entity ID only once: " + id);
+            auto found = find_entity(id);
+            if (found == entities.end()) return failure("ENTITY_NOT_FOUND", "Could not find entity '" + id + "'.");
+            const Json before = *found;
+            entities.erase(found);
+            changes.push_back({{"op", op}, {"id", id}, {"before", before}, {"after", nullptr}});
+        } else {
+            return failure("UNKNOWN_PATCH_OPERATION", "Supported scene patch operations are create, update, and delete.");
+        }
+    }
+
+    const std::string serialized = document.dump(2) + "\n";
+    const std::string planned_revision = hash_revision(serialized);
+    Json payload{
+        {"scene_id", scene_id}, {"dry_run", dry_run}, {"revision_before", current_revision},
+        {"planned_revision", planned_revision}, {"entity_count", entities.size()},
+        {"operation_count", operations.size()}, {"changes", std::move(changes)},
+        {"path", path.generic_string()}
+    };
+    if (dry_run) return success("Validated scene patch without writing changes.", std::move(payload), current_revision);
+    if (!atomic_write(path, serialized, code, message)) return failure(code, message, path.generic_string());
+    payload["revision_after"] = planned_revision;
+    return success("Applied scene patch atomically.", std::move(payload), planned_revision);
 }
 
 } // namespace motorforge
