@@ -37,7 +37,7 @@ int main() {
     require(created_project.ok, "test project should be created");
     std::filesystem::create_directories(project / "assets");
     std::ofstream sprite_file{project / "assets" / "factory.svg"};
-    sprite_file << "<svg></svg>\\n";
+    sprite_file << "<svg></svg>\n";
     sprite_file.close();
     require(static_cast<bool>(sprite_file), "test sprite asset should be writable");
 
