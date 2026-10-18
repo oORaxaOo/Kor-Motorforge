@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
 
     if (command == "preview") {
         if (argc < 7 || std::string_view{argv[2]} != "render") {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] [--json]'\\n";
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] [--json]'\n";
             return 2;
         }
         std::string output;
@@ -261,21 +261,21 @@ int main(int argc, char* argv[]) {
             else if (option == "--output" && index + 1 < argc) output = argv[++index];
             else if (option == "--width" && index + 1 < argc) {
                 if (!parse_integer(std::string_view{argv[++index]}, width)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: width must be an integer.\\n"; return 2;
+                    std::cerr << "error[INVALID_PREVIEW_SIZE]: width must be an integer.\n"; return 2;
                 }
             } else if (option == "--height" && index + 1 < argc) {
                 if (!parse_integer(std::string_view{argv[++index]}, height)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: height must be an integer.\\n"; return 2;
+                    std::cerr << "error[INVALID_PREVIEW_SIZE]: height must be an integer.\n"; return 2;
                 }
             } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete preview option '" << option << "'\\n";
+                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete preview option '" << option << "'\n";
                 return 2;
             }
         }
         const auto result = motorforge::render_scene_preview_svg(argv[3], argv[4], output, width, height);
-        if (json_output) std::cout << result.json << '\\n';
-        else if (result.ok) std::cout << result.message << " Output: " << output << '\\n';
-        else std::cerr << result.message << '\\n';
+        if (json_output) std::cout << result.json << '\n';
+        else if (result.ok) std::cout << result.message << " Output: " << output << '\n';
+        else std::cerr << result.message << '\n';
         return result.ok ? 0 : 1;
     }
 
