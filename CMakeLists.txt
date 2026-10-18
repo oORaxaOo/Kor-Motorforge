@@ -75,6 +75,16 @@ if(BUILD_TESTING)
         NAME motorforge_example_project
         COMMAND motorforge validate ${CMAKE_CURRENT_SOURCE_DIR}/examples/empty-project --json
     )
+
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME motorforge_mcp_adapter
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mcp_server.py
+                    --motorforge $<TARGET_FILE:motorforge>
+        )
+    endif()
 endif()
 
 install(TARGETS motorforge
