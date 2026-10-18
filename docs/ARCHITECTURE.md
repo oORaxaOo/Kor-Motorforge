@@ -74,6 +74,7 @@ Project content, plugins, imported assets, and tool output are untrusted data. D
 - Small, independently testable modules.
 - JSON as the initial interchange format for tool requests and responses.
 - A CLI first, with MCP and graphical editor clients layered over the same operations.
+- A headless runtime loader validates scene structure, finite transforms, and project-contained SVG references before any graphical renderer is introduced.
 - Linux as the first CI target; preserve cross-platform boundaries from the start.
 
 Third-party dependencies will be added when a working vertical slice justifies them. The initial scaffold deliberately avoids a large dependency stack.
