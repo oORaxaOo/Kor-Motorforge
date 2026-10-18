@@ -14,7 +14,7 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - CLI help, version, and machine-readable capability discovery.
 - Safe project scaffolding and project manifest validation.
 - Versioned scene documents with scene list/create/inspect operations.
-- Entity creation with transforms, optional sprite references, and optimistic revision checks.
+- Entity creation, transform/name updates, and deletion with optimistic revision checks; stale writes are rejected.
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
 - A stdio MCP adapter exposing project, scene, entity, validation, and procedural asset tools.
 - Workspace-bounded MCP filesystem paths by default.
@@ -50,6 +50,15 @@ REVISION=$(./build/motorforge scene inspect ./MyGame main-scene --json | python3
 ./build/motorforge entity create ./MyGame main-scene --id factory --name "Factory" --x 12 --y 8 --sprite assets/factory.svg --expected-revision "$REVISION" --json
 ```
 
+For later changes, inspect the scene again and use the newly returned revision:
+
+```sh
+REVISION=$(./build/motorforge scene inspect ./MyGame main-scene --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["revision"])')
+./build/motorforge entity update ./MyGame main-scene --id factory --name "Factory Mk II" --x 20 --y 9 --expected-revision "$REVISION" --json
+REVISION=$(./build/motorforge scene inspect ./MyGame main-scene --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["revision"])')
+./build/motorforge entity delete ./MyGame main-scene --id factory --expected-revision "$REVISION" --json
+```
+
 Project initialization and asset generation refuse to overwrite existing destinations. Scene edits use optimistic concurrency: a stale revision is rejected instead of silently overwriting newer work.
 
 ## MCP integration
@@ -60,7 +69,7 @@ The adapter uses the Model Context Protocol over standard input/output and Pytho
 python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-projects
 ```
 
-Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes project creation and validation, scene list/create/inspect, revision-checked entity creation, and procedural sprite generation. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
+Configure your MCP client to launch that command. The workspace directory must already exist. The server exposes project creation and validation, scene list/create/inspect, revision-checked entity create/update/delete operations, and procedural sprite generation. Project paths are restricted to the configured workspace by default. Use `--allow-external-paths` only when the agent genuinely needs to access other directories.
 
 ## Planned milestones
 
