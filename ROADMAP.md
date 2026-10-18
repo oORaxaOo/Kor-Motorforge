@@ -41,7 +41,8 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] 2D renderer and camera
 - [ ] Input mapping
 - [x] Headless scene loading and runtime snapshot validation
-- [ ] Scene preview and pixel rendering
+- [x] Portable static SVG scene preview with embedded SVG sprites
+- [ ] Native windowed scene preview and pixel rendering
 
 ## M5 — Procedural content
 - [x] Deterministic seeded SVG generator
