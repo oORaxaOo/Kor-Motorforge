@@ -1,4 +1,5 @@
 #include "core/engine_info.hpp"
+#include "core/project_validator.hpp"
 
 #include <iostream>
 #include <string_view>
@@ -12,7 +13,8 @@ void print_help() {
         << "Usage:\n"
         << "  motorforge --help\n"
         << "  motorforge --version\n"
-        << "  motorforge capabilities --json\n\n"
+        << "  motorforge capabilities --json\n"
+        << "  motorforge validate <project-directory-or-project.json> [--json]\n\n"
         << "The CLI contract is version " << motorforge::contract_version() << ".\n";
 }
 
@@ -46,6 +48,34 @@ int main(int argc, char* argv[]) {
 
         std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge capabilities --json'\n";
         return 2;
+    }
+
+    if (command == "validate") {
+        if (argc < 3) {
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge validate <project-path> [--json]'\n";
+            return 2;
+        }
+
+        const auto result = motorforge::validate_project(argv[2]);
+        const bool json_output = argc >= 4 && std::string_view{argv[3]} == "--json";
+
+        if (json_output) {
+            std::cout << motorforge::validation_result_json(result) << '\n';
+        } else if (result.ok) {
+            std::cout << "Project valid: " << result.project_name
+                      << " [" << result.project_id << "]\n";
+        } else {
+            for (const auto& diagnostic : result.diagnostics) {
+                std::cerr << "error[" << diagnostic.code << "]: "
+                          << diagnostic.message;
+                if (!diagnostic.location.empty()) {
+                    std::cerr << " (" << diagnostic.location << ')';
+                }
+                std::cerr << '\n';
+            }
+        }
+
+        return result.ok ? 0 : 1;
     }
 
     std::cerr << "error[UNKNOWN_COMMAND]: unknown command '" << command
