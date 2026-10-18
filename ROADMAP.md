@@ -40,8 +40,8 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Window and platform abstraction
 - [ ] 2D renderer and camera
 - [ ] Input mapping
-- [ ] Scene loading and preview
-- [ ] Headless runtime mode
+- [x] Headless scene loading and runtime snapshot validation
+- [ ] Scene preview and pixel rendering
 
 ## M5 — Procedural content
 - [x] Deterministic seeded SVG generator
@@ -58,7 +58,8 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [x] Workspace path boundary for MCP tools
 - [x] Project and procedural asset tools exposed through MCP
 - [x] Scene and entity tools exposed through MCP
-- [ ] Expand tool surface to asset registry and runtime operations
+- [x] Headless runtime inspection exposed through MCP
+- [ ] Expand tool surface to asset registry and interactive runtime operations
 - [ ] Richer permission policies and sandbox boundaries
 
 ## M7 — Editor and extensibility
