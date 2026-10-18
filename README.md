@@ -18,12 +18,12 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
 - A headless runtime that loads scenes, validates transforms, resolves SVG sprite assets, and returns a machine-readable runtime snapshot.
 - A portable SVG scene-preview renderer with world axes, grid, entity markers, transform placement, and embedded sprite assets.
-- A self-contained interactive HTML scene viewer with pointer-based pan, mouse-wheel zoom, keyboard shortcuts, and reset controls; no server or browser dependencies are required.
+- A self-contained HTML scene editor in inspect mode with a selectable scene hierarchy, entity property inspector (ID, position, rotation, scale), pointer-based pan, mouse-wheel zoom, keyboard shortcuts, and reset controls; no server or browser dependencies are required.
 - A stdio MCP adapter exposing project, scene, entity, runtime inspection, validation, and procedural asset tools.
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The runtime still has no native game window, real-time simulation loop, or interactive graphical editor. Both preview formats are static scene snapshots, not real-time renderers. The HTML viewer adds navigation controls but does not edit scene data. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
+The runtime still has no native game window, real-time simulation loop, or live renderer. The HTML scene editor is a static snapshot with working selection and read-only inspection; it does not persist edits to scene data yet. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
