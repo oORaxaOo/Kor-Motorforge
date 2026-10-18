@@ -62,14 +62,14 @@ bool parse_number(std::string_view text, double& value) {
 
 int report_scene_result(const motorforge::SceneCommandResult& result, bool json_output) {
     if (json_output) {
-        std::cout << result.json << '\\n';
+        std::cout << result.json << '\n';
     } else if (result.ok) {
-        std::cout << result.message << '\\n';
+        std::cout << result.message << '\n';
         if (!result.revision.empty()) {
-            std::cout << "revision: " << result.revision << '\\n';
+            std::cout << "revision: " << result.revision << '\n';
         }
     } else {
-        std::cerr << "error: " << result.message << '\\n';
+        std::cerr << "error: " << result.message << '\n';
     }
     return result.ok ? 0 : 1;
 }
