@@ -33,7 +33,7 @@ jobs:
       - name: Verify machine-readable capabilities and project workflows
         run: |
           ./build/motorforge capabilities --json > capabilities.json
-          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "entity.create", "runtime.inspect", "preview.render"} <= names'
+          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "entity.create", "runtime.inspect", "preview.render", "preview.interactive"} <= names'
           ./build/motorforge validate examples/empty-project --json > validation.json
           python3 -c 'import json; d=json.load(open("validation.json")); assert d["ok"] is True; assert d["project"]["id"] == "my-first-game"'
           ./build/motorforge init "$RUNNER_TEMP/motorforge-ci-project" --name "CI Test Project" --json > created.json
@@ -50,6 +50,8 @@ jobs:
           python3 -c 'import json; d=json.load(open("entity-created.json")); assert d["ok"] is True; assert d["result"]["entity"]["id"] == "factory"'
           ./build/motorforge preview render "$RUNNER_TEMP/motorforge-ci-project" main-scene --output "$RUNNER_TEMP/motorforge-ci-project/preview.svg" --width 640 --height 480 --json > preview.json
           python3 -c 'import json; d=json.load(open("preview.json")); assert d["ok"] is True; assert d["result"]["sprite_count"] == 1; assert open("'"$RUNNER_TEMP"'/motorforge-ci-project/preview.svg").read().startswith("<svg")'
+          ./build/motorforge preview interactive "$RUNNER_TEMP/motorforge-ci-project" main-scene --output "$RUNNER_TEMP/motorforge-ci-project/scene-viewer.html" --width 640 --height 480 --json > interactive-preview.json
+          python3 -c 'import json; d=json.load(open("interactive-preview.json")); assert d["ok"] is True; assert d["result"]["format"] == "html"; p="'"$RUNNER_TEMP"'/motorforge-ci-project/scene-viewer.html"; s=open(p).read(); assert s.startswith("<!doctype html>"); assert "zoomAt" in s and "pointermove" in s'
 
       - name: Verify JSON source files
         run: |
