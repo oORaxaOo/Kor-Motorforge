@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 add_library(motorforge_core
     src/core/engine_info.cpp
     src/core/project_validator.cpp
+    src/core/project_creator.cpp
 )
 add_library(KorMotorforge::Core ALIAS motorforge_core)
 
@@ -60,6 +61,12 @@ if(BUILD_TESTING)
     )
     target_link_libraries(motorforge_project_validator_tests PRIVATE KorMotorforge::Core)
     add_test(NAME motorforge_project_validator COMMAND motorforge_project_validator_tests)
+
+    add_executable(motorforge_project_creator_tests
+        tests/test_project_creator.cpp
+    )
+    target_link_libraries(motorforge_project_creator_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_project_creator COMMAND motorforge_project_creator_tests)
 
     add_test(NAME motorforge_cli_help COMMAND motorforge --help)
     add_test(NAME motorforge_cli_version COMMAND motorforge --version)
