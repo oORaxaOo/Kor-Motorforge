@@ -68,6 +68,20 @@ int main() {
     require(entity_payload["result"]["entity_count"] == 1,
             "scene entity count should increase");
 
+    const auto updated_entity = motorforge::update_entity(
+        project.string(), "main-scene", "factory", "Factory Mk II", 20.0, 9.5,
+        created_entity.revision);
+    require(updated_entity.ok, "entity update should succeed with current revision");
+    const auto update_payload = parse(updated_entity);
+    require(update_payload["result"]["entity"]["name"] == "Factory Mk II",
+            "entity update should change its name");
+    require(update_payload["result"]["entity"]["components"]["transform"]["x"] == 20.0,
+            "entity update should change its transform");
+    require(!motorforge::update_entity(
+                project.string(), "main-scene", "factory", "Stale Update", 0.0, 0.0,
+                created_entity.revision).ok,
+            "entity update must reject a stale revision");
+
     const auto stale_write = motorforge::create_entity(
         project.string(), "main-scene", "another-factory", "Stale Factory", 0.0, 0.0,
         "", inspected.revision);
@@ -82,8 +96,19 @@ int main() {
     require(parse(invalid_asset)["errors"][0]["code"] == "INVALID_ASSET_PATH",
             "asset traversal must return stable error code");
 
+    const auto deleted_entity = motorforge::delete_entity(
+        project.string(), "main-scene", "factory", updated_entity.revision);
+    require(deleted_entity.ok, "entity delete should succeed with current revision");
+    require(parse(deleted_entity)["result"]["deleted_entity_id"] == "factory",
+            "delete response should identify the removed entity");
+    require(parse(motorforge::inspect_scene(project.string(), "main-scene"))["result"]["entities"].empty(),
+            "deleted entity should no longer be present");
+    require(!motorforge::delete_entity(
+                project.string(), "main-scene", "factory", deleted_entity.revision).ok,
+            "deleting an absent entity should fail");
+
     const auto listed = motorforge::list_scenes(project.string());
-    require(listed.ok, "scene list should remain valid after entity creation");
+    require(listed.ok, "scene list should remain valid after entity mutations");
     require(parse(listed)["result"]["scenes"].size() == 1,
             "scene list should contain the created scene");
 
