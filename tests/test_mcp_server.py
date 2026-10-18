@@ -159,6 +159,21 @@ def main() -> int:
         assert runtime_payload["result"]["runtime"]["status"] == "ready"
         assert runtime_payload["result"]["sprite_entity_count"] == 1
 
+        preview_batch = [
+            request(18, "tools/call", {
+                "name": "scene_preview_render",
+                "arguments": {
+                    "project_path": "sample-project", "scene_id": "main-scene",
+                    "output_path": "sample-project/scene-preview.svg", "width": 640, "height": 480,
+                },
+            }),
+        ]
+        preview_responses = run_server(server, args.motorforge, workspace, preview_batch)
+        preview_payload = tool_payload(preview_responses[18])
+        assert preview_responses[18]["result"]["isError"] is False
+        assert preview_payload["result"]["format"] == "svg"
+        assert (workspace / "sample-project" / "scene-preview.svg").read_text(encoding="utf-8").startswith("<svg")
+
         deleted_batch = [
             request(15, "tools/call", {
                 "name": "entity_delete",
@@ -189,7 +204,7 @@ def main() -> int:
     expected_tools = {
         "motorforge_capabilities", "validate_project", "create_project",
         "generate_procedural_sprite", "scene_list", "scene_create",
-        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect",
+        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect", "scene_preview_render",
     }
     assert expected_tools <= tool_names
 

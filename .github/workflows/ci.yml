@@ -33,7 +33,7 @@ jobs:
       - name: Verify machine-readable capabilities and project workflows
         run: |
           ./build/motorforge capabilities --json > capabilities.json
-          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "entity.create"} <= names'
+          python3 -c 'import json; d=json.load(open("capabilities.json")); names={c["name"] for c in d["commands"]}; assert d["engine"]["name"] == "Kor Motorforge"; assert {"validate", "init", "spritegen", "scene.list", "scene.create", "scene.inspect", "entity.create", "runtime.inspect", "preview.render"} <= names'
           ./build/motorforge validate examples/empty-project --json > validation.json
           python3 -c 'import json; d=json.load(open("validation.json")); assert d["ok"] is True; assert d["project"]["id"] == "my-first-game"'
           ./build/motorforge init "$RUNNER_TEMP/motorforge-ci-project" --name "CI Test Project" --json > created.json
@@ -48,6 +48,8 @@ jobs:
           REVISION=$(python3 -c 'import json; print(json.load(open("scene-inspected.json"))["revision"])')
           ./build/motorforge entity create "$RUNNER_TEMP/motorforge-ci-project" main-scene --id factory --name Factory --x 12 --y 8 --sprite assets/factory.svg --expected-revision "$REVISION" --json > entity-created.json
           python3 -c 'import json; d=json.load(open("entity-created.json")); assert d["ok"] is True; assert d["result"]["entity"]["id"] == "factory"'
+          ./build/motorforge preview render "$RUNNER_TEMP/motorforge-ci-project" main-scene --output "$RUNNER_TEMP/motorforge-ci-project/preview.svg" --width 640 --height 480 --json > preview.json
+          python3 -c 'import json; d=json.load(open("preview.json")); assert d["ok"] is True; assert d["result"]["sprite_count"] == 1; assert open("'"$RUNNER_TEMP"'/motorforge-ci-project/preview.svg").read().startswith("<svg")'
 
       - name: Verify JSON source files
         run: |

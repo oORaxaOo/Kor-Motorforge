@@ -1,5 +1,6 @@
 #include "core/project_creator.hpp"
 #include "core/runtime.hpp"
+#include "core/scene_preview.hpp"
 #include "core/scene_store.hpp"
 
 #include <nlohmann/json.hpp>
@@ -8,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string_view>
 
 namespace {
@@ -49,6 +51,24 @@ int main() {
     require(payload["result"]["sprite_entity_count"] == 1, "SVG sprite should be renderable");
     require(payload["result"]["entities"][0]["transform"]["x"] == 12.5, "runtime should preserve transform");
     require(payload["result"]["assets"][0]["path"] == "assets/factory.svg", "runtime should report resolved asset");
+
+    const auto preview_path = root / "preview.svg";
+    const auto preview = motorforge::render_scene_preview_svg(
+        project.string(), "main-scene", preview_path.string(), 800, 600);
+    require(preview.ok, "SVG scene preview should render");
+    const auto preview_json = Json::parse(preview.json);
+    require(preview_json["result"]["sprite_count"] == 1, "preview should report its rendered sprites");
+    std::ifstream preview_file(preview_path);
+    const std::string preview_text((std::istreambuf_iterator<char>(preview_file)),
+                                   std::istreambuf_iterator<char>());
+    require(preview_text.find("<svg") != std::string::npos, "preview output should be SVG");
+    require(preview_text.find("data:image/svg+xml;base64,") != std::string::npos,
+            "preview should embed sprites so the output is portable");
+    const auto overwrite = motorforge::render_scene_preview_svg(
+        project.string(), "main-scene", preview_path.string(), 800, 600);
+    require(!overwrite.ok, "preview must not overwrite existing output");
+    require(Json::parse(overwrite.json)["errors"][0]["code"] == "OUTPUT_PATH_EXISTS",
+            "preview overwrite refusal should use a stable error");
 
     const auto missing = motorforge::inspect_runtime(project.string(), "absent-scene");
     require(!missing.ok, "runtime should reject missing scenes");
