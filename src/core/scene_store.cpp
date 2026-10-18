@@ -613,7 +613,7 @@ SceneCommandResult mutate_entity(std::string_view project_path,
         changed_entity = *found;
     }
 
-    const std::string serialized = document.dump(2) + "\\n";
+    const std::string serialized = document.dump(2) + "\n";
     if (!atomic_write(path, serialized, code, message)) {
         return failure(code, message, path.generic_string());
     }
