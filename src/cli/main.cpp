@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
 
     if (command == "scene") {
         if (argc < 4) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge scene <list|create|inspect> <project> ...'\n";
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge scene <list|create|inspect|patch> <project> ...'\n";
             return 2;
         }
 
