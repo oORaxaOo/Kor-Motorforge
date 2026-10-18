@@ -178,7 +178,7 @@ ScenePreviewResult render_interactive_scene_preview_html(std::string_view projec
          << "<main id=\"workspace\"><aside id=\"sidebar\"><h2>Scene hierarchy</h2><div id=\"hierarchy\"></div><section id=\"inspector\"><h2>Entity inspector</h2><div id=\"details\"><p id=\"empty\">Select an entity in the hierarchy or scene to inspect its properties.</p></div></section></aside><section id=\"viewport\" aria-label=\"Interactive scene preview\"><div id=\"scene\">" << svg << "</div>"
          << "<div id=\"help\">Select: click entity · Wheel: zoom · Drag: pan · 0: reset · +/−: zoom</div></section></main>"
          << "<script>(()=>{const v=document.getElementById('viewport'),i=document.getElementById('scene'),z=document.getElementById('zoom');"
-         << "i.src='data:image/svg+xml;base64," << encoded_svg << "';let scale=1,x=0,y=0,drag=null;"
+         << "let scale=1,x=0,y=0,drag=null;const h=document.getElementById('hierarchy'),d=document.getElementById('details');"
          << "function paint(){i.style.transform='translate('+x+'px,'+y+'px) scale('+scale+')';z.textContent=Math.round(scale*100)+'%'}"
          << "function zoomAt(f,cx=v.clientWidth/2,cy=v.clientHeight/2){const next=Math.max(.2,Math.min(8,scale*f));const k=next/scale;x=cx-(cx-x)*k;y=cy-(cy-y)*k;scale=next;paint()}"
          << "function reset(){scale=1;x=0;y=0;paint()}document.getElementById('plus').onclick=()=>zoomAt(1.2);"
