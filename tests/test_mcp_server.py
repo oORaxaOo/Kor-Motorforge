@@ -147,6 +147,18 @@ def main() -> int:
         assert updated["result"]["entity"]["name"] == "Factory Updated"
         assert updated["result"]["entity"]["components"]["transform"]["x"] == 21
     
+        runtime_batch = [
+            request(17, "tools/call", {
+                "name": "runtime_inspect",
+                "arguments": {"project_path": "sample-project", "scene_id": "main-scene"},
+            }),
+        ]
+        runtime_responses = run_server(server, args.motorforge, workspace, runtime_batch)
+        runtime_payload = tool_payload(runtime_responses[17])
+        assert runtime_responses[17]["result"]["isError"] is False
+        assert runtime_payload["result"]["runtime"]["status"] == "ready"
+        assert runtime_payload["result"]["renderable_entity_count"] == 1
+
         deleted_batch = [
             request(15, "tools/call", {
                 "name": "entity_delete",
@@ -177,7 +189,7 @@ def main() -> int:
     expected_tools = {
         "motorforge_capabilities", "validate_project", "create_project",
         "generate_procedural_sprite", "scene_list", "scene_create",
-        "scene_inspect", "entity_create", "entity_update", "entity_delete",
+        "scene_inspect", "entity_create", "entity_update", "entity_delete", "runtime_inspect",
     }
     assert expected_tools <= tool_names
 
