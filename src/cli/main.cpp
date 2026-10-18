@@ -3,6 +3,7 @@
 #include "core/project_validator.hpp"
 #include "core/procedural_sprite.hpp"
 #include "core/scene_store.hpp"
+#include "core/runtime.hpp"
 
 #include <charconv>
 #include <cmath>
@@ -28,6 +29,7 @@ void print_help() {
         << "  motorforge scene list <project> [--json]\n"
         << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
         << "  motorforge scene inspect <project> <scene-id> [--json]\n"
+        << "  motorforge runtime inspect <project> <scene-id> [--json]\n"
         << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
         << "  motorforge entity update <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --x <number> --y <number> [--json]\n"
         << "  motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> [--json]\n\n"
@@ -228,6 +230,20 @@ int main(int argc, char* argv[]) {
             return 2;
         }
         return report_scene_result(result, json_output);
+    }
+
+    if (command == "runtime") {
+        if (argc < 4 || std::string_view{argv[2]} != "inspect") {
+            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge runtime inspect <project> <scene-id> [--json]'\n";
+            return 2;
+        }
+        const bool json_output = argc >= 5 && std::string_view{argv[4]} == "--json";
+        if (argc > 5 || (argc == 5 && !json_output)) {
+            std::cerr << "error[INVALID_ARGUMENT]: unexpected runtime inspect argument\n";
+            return 2;
+        }
+        const auto result = motorforge::inspect_runtime(argv[3 - 1], argv[3]);
+        return report_scene_result({result.ok, result.message, result.json, {}}, json_output);
     }
 
     if (command == "entity") {
