@@ -22,6 +22,7 @@ This document defines the contract all agent-facing interfaces must follow. The 
 - `scene create <project> --name <name> [--id <id>] --json`: create a scene document.
 - `scene inspect <project> <scene-id> --json`: inspect scene data and obtain its revision token.
 - `runtime inspect <project> <scene-id> --json`: load a scene headlessly, validate transforms, and resolve supported sprite assets.
+- `preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] --json`: export a portable static SVG scene preview without overwriting an existing file.
 - `entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --json`: create an entity and reject stale revisions.
 - `entity update <project> <scene-id> --id <id> --name <name> --x <number> --y <number> --expected-revision <revision> --json`: update an entity name and position.
 - `entity delete <project> <scene-id> --id <id> --expected-revision <revision> --json`: delete an entity.
@@ -49,6 +50,7 @@ The stdio adapter exposes:
 - `entity_update`
 - `entity_delete`
 - `runtime_inspect`
+- `scene_preview_render`
 
 The adapter invokes explicit CLI commands with argument arrays (never a shell), applies a timeout, and restricts paths to a configured workspace by default. This is a safety guard, not a complete sandbox. Only connect trusted clients and keep process permissions appropriately limited.
 
@@ -60,7 +62,7 @@ python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-pro
 
 ## Validation limitations
 
-The project and scene validators enforce core structural invariants. Full JSON Schema conformance validation, scene migration tooling, persistent undo/rollback, pixel rendering, and a graphical runtime are future work. The current headless runtime validates and snapshots scenes; it does not render pixels or run a simulation loop. The schemas are published at `schemas/project.schema.json` and `schemas/scene.schema.json`.
+The project and scene validators enforce core structural invariants. Full JSON Schema conformance validation, scene migration tooling, persistent undo/rollback, native pixel rendering, and an interactive graphical runtime are future work. The SVG preview is a static export with embedded SVG assets; it does not run a simulation loop. The schemas are published at `schemas/project.schema.json` and `schemas/scene.schema.json`.
 
 ## Tool design checklist
 
