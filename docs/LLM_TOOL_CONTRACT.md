@@ -36,15 +36,23 @@ Agents must be able to ask the tool surface:
 - `validate <project-directory-or-project.json> [--json]`: validate a project manifest.
 - `init <new-directory> --name <name> [--id <id>] [--json]`: create a project without overwriting an existing destination.
 
-Examples:
+## MCP tools
+
+The stdio adapter exposes the same operations to MCP-compatible clients:
+
+- `motorforge_capabilities`: read command and capability metadata.
+- `validate_project`: validate a project manifest.
+- `create_project`: create a new project manifest without overwriting an existing destination.
+
+The adapter invokes only explicit CLI commands with argument arrays (never a shell), applies a timeout, and restricts paths to a configured workspace by default. The workspace boundary is a useful safety guard, not a complete security sandbox; only connect trusted clients and keep the engine process permissions appropriately limited.
+
+Start it with:
 
 ```sh
-motorforge --help
-motorforge --version
-motorforge capabilities --json
-motorforge validate examples/empty-project --json
-motorforge init ./MyGame --name "My Game" --json
+python3 tools/mcp_server.py --motorforge ./build/motorforge --workspace ./my-projects
 ```
+
+## Project manifest validation
 
 The validator currently checks core invariants: supported schema version, project ID and name, engine minimum version format, and settings object type. The versioned schema lives at `schemas/project.schema.json`. Full JSON Schema conformance validation and migration tooling are future work.
 
@@ -53,27 +61,6 @@ The initializer creates a version 1 manifest with deterministic defaults. If no 
 ## Validation response
 
 A successful validation response includes `contract_version`, `ok`, `manifest_path`, `project`, and a `diagnostics` array. Each diagnostic has a stable `code`, a readable `message`, and a `location`.
-
-Example failure shape:
-
-```json
-{
-  "contract_version": "1",
-  "ok": false,
-  "manifest_path": "game/project.json",
-  "project": {
-    "id": "",
-    "name": ""
-  },
-  "diagnostics": [
-    {
-      "code": "PROJECT_NOT_FOUND",
-      "message": "Project manifest was not found at the requested path.",
-      "location": "game/project.json"
-    }
-  ]
-}
-```
 
 ## Tool design checklist
 
