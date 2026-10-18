@@ -1,0 +1,22 @@
+# Build output
+/build/
+/cmake-build-*/
+/out/
+/dist/
+/artifacts/
+
+# IDEs
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Generated project/cache data
+.motorforge-cache/
+.cache/
