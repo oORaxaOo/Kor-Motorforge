@@ -15,6 +15,7 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Safe project scaffolding and project manifest validation.
 - Versioned scene documents with scene list/create/inspect operations.
 - Entity creation, transform/name updates, and deletion with optimistic revision checks; stale writes are rejected.
+- An AI-first scene patch API: plan/diff a batch of entity creates, updates, and deletes, then apply the entire validated batch atomically using one expected revision.
 - Deterministic procedural SVG generation for an industrial-building sprite, with seed metadata and no image-generation model.
 - A headless runtime that loads scenes, validates transforms, resolves SVG sprite assets, and returns a machine-readable runtime snapshot.
 - A portable SVG scene-preview renderer with world axes, grid, entity markers, transform placement, and embedded sprite assets.
@@ -23,7 +24,7 @@ The long-term ambition is a flexible game-development platform with an editor ex
 - Workspace-bounded MCP filesystem paths by default.
 - Automated build, unit tests, and MCP integration tests in GitHub Actions.
 
-The runtime still has no native game window, real-time simulation loop, or live renderer. The HTML scene editor is a static snapshot with working selection and read-only inspection; it does not persist edits to scene data yet. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
+The runtime still has no native game window, real-time simulation loop, or live renderer. The HTML scene inspector is an optional diagnostic artifact, not a required human-facing editor. The primary workflow is machine-readable CLI/MCP operations; batch patches can be previewed and committed without opening a GUI. The validator checks core invariants rather than every JSON Schema rule. The procedural asset system currently supports one SVG sprite family.
 
 ## Build from source
 
@@ -66,6 +67,28 @@ REVISION=$(./build/motorforge scene inspect ./MyGame main-scene --json | python3
 ```
 
 Project initialization and asset generation refuse to overwrite existing destinations. Scene edits use optimistic concurrency: a stale revision is rejected instead of silently overwriting newer work.
+
+### AI-first atomic scene patch
+
+Create a patch file containing an `operations` array. Supported operations are `create`, `update`, and `delete`; an entity ID may be targeted only once per patch.
+
+```json
+{
+  "operations": [
+    {"op": "update", "id": "factory", "set": {
+      "name": "Factory Mk II",
+      "transform": {"x": 20, "y": 9, "rotation": 0}
+    }},
+    {"op": "create", "entity": {
+      "id": "storage-yard",
+      "name": "Storage Yard",
+      "components": {"transform": {"x": 30, "y": 12}}
+    }}
+  ]
+}
+```
+
+Run `scene patch <project> <scene-id> --patch <file.json> --expected-revision <revision> --dry-run --json` first to get a structured diff and planned revision without writing. Then rerun without `--dry-run` using the same revision. Any invalid operation or revision conflict aborts the entire patch; no earlier operation is partially committed.
 
 ## MCP integration
 
