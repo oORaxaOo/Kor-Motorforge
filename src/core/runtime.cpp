@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace motorforge {
@@ -121,7 +122,7 @@ RuntimeResult inspect_runtime(std::string_view project_path, std::string_view sc
         Json runtime_entity{{"id", id}, {"name", entity["name"]},
             {"transform", {{"x", transform["x"]}, {"y", transform["y"]},
                 {"rotation", transform["rotation"]}, {"scale_x", transform["scale_x"]},
-                {"scale_y", transform["scale_y"]}}}, {"renderable", false}};
+                {"scale_y", transform["scale_y"]}}}, {"has_sprite", false}};
 
         if (components.contains("sprite")) {
             const auto& sprite = components["sprite"];
@@ -140,7 +141,7 @@ RuntimeResult inspect_runtime(std::string_view project_path, std::string_view sc
             if (resolved.extension() != ".svg")
                 return failure("UNSUPPORTED_SPRITE_FORMAT", "Headless runtime currently accepts SVG sprites only.",
                                resolved.generic_string());
-            runtime_entity["renderable"] = true;
+            runtime_entity["has_sprite"] = true;
             runtime_entity["sprite"] = {{"asset", relative.generic_string()}, {"format", "svg"}};
             assets.push_back({{"path", relative.generic_string()}, {"format", "svg"}});
             ++renderable_count;
@@ -152,7 +153,7 @@ RuntimeResult inspect_runtime(std::string_view project_path, std::string_view sc
         {"result", {{"runtime", {{"status", "ready"}, {"mode", "headless"},
                                 {"renderer", "none"}, {"simulation_tick", 0}}},
             {"scene", document["scene"]}, {"entity_count", entities.size()},
-            {"renderable_entity_count", renderable_count}, {"entities", std::move(entities)},
+            {"sprite_entity_count", renderable_count}, {"entities", std::move(entities)},
             {"assets", std::move(assets)}}}};
     return {true, "Scene loaded and validated by the headless runtime.", response.dump(2)};
 }
