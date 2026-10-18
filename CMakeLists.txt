@@ -24,6 +24,7 @@ add_library(motorforge_core
     src/core/engine_info.cpp
     src/core/project_validator.cpp
     src/core/project_creator.cpp
+    src/core/procedural_sprite.cpp
 )
 add_library(KorMotorforge::Core ALIAS motorforge_core)
 
@@ -67,6 +68,12 @@ if(BUILD_TESTING)
     )
     target_link_libraries(motorforge_project_creator_tests PRIVATE KorMotorforge::Core)
     add_test(NAME motorforge_project_creator COMMAND motorforge_project_creator_tests)
+
+    add_executable(motorforge_procedural_sprite_tests
+        tests/test_procedural_sprite.cpp
+    )
+    target_link_libraries(motorforge_procedural_sprite_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_procedural_sprite COMMAND motorforge_procedural_sprite_tests)
 
     add_test(NAME motorforge_cli_help COMMAND motorforge --help)
     add_test(NAME motorforge_cli_version COMMAND motorforge --version)
