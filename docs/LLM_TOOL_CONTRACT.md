@@ -9,7 +9,7 @@ This document defines the contract all agent-facing interfaces must follow. The 
 - Standard output contains the requested result only in JSON mode.
 - Human-oriented progress and diagnostics go to standard error.
 - Output includes a contract version.
-- Errors include a stable code, human-readable message, and optional structured details.
+- Errors include stable codes, a human-readable message, and optional structured details.
 
 ### Safe mutation
 - Inspection is read-only.
@@ -28,34 +28,46 @@ Agents must be able to ask the tool surface:
 - what permissions it requires;
 - how success and failure are represented.
 
-## Initial CLI contract
+## Implemented CLI contract
 
-The initial native executable supports:
-- `--help`: human-readable usage;
-- `--version`: version and contract information;
-- `capabilities --json`: machine-readable list of currently implemented commands.
+- `--help`: human-readable usage.
+- `--version`: engine and contract versions.
+- `capabilities --json`: machine-readable list of implemented commands.
+- `validate <project-directory-or-project.json> [--json]`: validate a project manifest.
 
-Example:
+Examples:
 
 ```sh
 motorforge --help
 motorforge --version
 motorforge capabilities --json
+motorforge validate examples/empty-project --json
 ```
 
-The first implementation is intentionally small. Commands must not be documented as available until they actually exist and have tests.
+The validator currently checks core invariants: supported schema version, project ID and name, engine minimum version format, and settings object type. The versioned schema lives at `schemas/project.schema.json`. Full JSON Schema conformance validation and migration tooling are future work.
 
-## Error shape (target)
+## Validation response
+
+A successful response includes `contract_version`, `ok`, `manifest_path`, `project`, and a `diagnostics` array. Each diagnostic has a stable `code`, a readable `message`, and a `location`.
+
+Example failure shape:
 
 ```json
 {
   "contract_version": "1",
   "ok": false,
-  "error": {
-    "code": "PROJECT_NOT_FOUND",
-    "message": "The project manifest was not found.",
-    "details": {}
-  }
+  "manifest_path": "game/project.json",
+  "project": {
+    "id": "",
+    "name": ""
+  },
+  "diagnostics": [
+    {
+      "code": "PROJECT_NOT_FOUND",
+      "message": "Project manifest was not found at the requested path.",
+      "location": "game/project.json"
+    }
+  ]
 }
 ```
 
