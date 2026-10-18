@@ -26,12 +26,16 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
-      - name: Verify machine-readable capabilities
+      - name: Verify machine-readable capabilities and project commands
         run: |
           ./build/motorforge capabilities --json > capabilities.json
-          python3 -c 'import json; d=json.load(open("capabilities.json")); assert d["engine"]["name"] == "Kor Motorforge"; assert any(c["name"] == "validate" for c in d["commands"])'
+          python3 -c 'import json; d=json.load(open("capabilities.json")); assert d["engine"]["name"] == "Kor Motorforge"; assert any(c["name"] == "validate" for c in d["commands"]); assert any(c["name"] == "init" for c in d["commands"])'
           ./build/motorforge validate examples/empty-project --json > validation.json
           python3 -c 'import json; d=json.load(open("validation.json")); assert d["ok"] is True; assert d["project"]["id"] == "my-first-game"'
+          ./build/motorforge init "$RUNNER_TEMP/motorforge-ci-project" --name "CI Test Project" --json > created.json
+          python3 -c 'import json; d=json.load(open("created.json")); assert d["ok"] is True; assert d["project"]["id"] == "ci-test-project"'
+          ./build/motorforge validate "$RUNNER_TEMP/motorforge-ci-project" --json > created-validation.json
+          python3 -c 'import json; d=json.load(open("created-validation.json")); assert d["ok"] is True'
 
       - name: Verify JSON source files
         run: |
