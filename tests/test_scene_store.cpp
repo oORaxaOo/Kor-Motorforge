@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string_view>
 
@@ -34,6 +35,11 @@ int main() {
     const auto project = root / "game";
     const auto created_project = motorforge::create_project(project, "Scene Store Test");
     require(created_project.ok, "test project should be created");
+    std::filesystem::create_directories(project / "assets");
+    std::ofstream sprite_file{project / "assets" / "factory.svg"};
+    sprite_file << "<svg xmlns=\\"http://www.w3.org/2000/svg\\"></svg>\\n";
+    sprite_file.close();
+    require(static_cast<bool>(sprite_file), "test sprite asset should be writable");
 
     const auto empty_list = motorforge::list_scenes(project.string());
     require(empty_list.ok, "listing scenes before any are created should succeed");
