@@ -190,6 +190,8 @@ def main() -> int:
         viewer = (workspace / "sample-project" / "scene-viewer.html").read_text(encoding="utf-8")
         assert viewer.startswith("<!doctype html>")
         assert "zoomAt" in viewer and "pointermove" in viewer
+        assert "Scene hierarchy" in viewer and "Entity inspector" in viewer
+        assert "data-entity-id" in viewer and "Position X" in viewer
 
         deleted_batch = [
             request(15, "tools/call", {

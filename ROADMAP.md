@@ -42,7 +42,7 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Input mapping
 - [x] Headless scene loading and runtime snapshot validation
 - [x] Portable static SVG scene preview with embedded SVG sprites
-- [x] Self-contained HTML viewer with pan, zoom, and reset controls
+- [x] Self-contained HTML scene inspector with selectable entity hierarchy, transform metadata, pan, zoom, and reset controls
 - [ ] Native windowed scene preview and pixel rendering
 
 ## M5 — Procedural content
@@ -65,7 +65,8 @@ This roadmap is a sequence of acceptance-tested capabilities, not a promise that
 - [ ] Richer permission policies and sandbox boundaries
 
 ## M7 — Editor and extensibility
-- [ ] Scene hierarchy and inspector
+- [x] Read-only scene hierarchy and entity inspector in the HTML scene viewer
+- [ ] Editable transform fields with revision-checked persistence
 - [ ] Asset browser and generator graph
 - [ ] Plugin API and scripting interface
 - [ ] UI, audio, navigation, animation, physics integrations

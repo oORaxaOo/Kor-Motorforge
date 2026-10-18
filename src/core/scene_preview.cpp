@@ -96,7 +96,7 @@ ScenePreviewResult render_scene_preview_svg(std::string_view project_path,
         const double rotation=t.at("rotation").get<double>();
         const double px=width/2.0+x*24.0, py=height/2.0-y*24.0;
         if (!entity.at("has_sprite").get<bool>()) {
-            svg << "<g transform=\"translate(" << px << ' ' << py << ")\"><circle r=\"5\" fill=\"#e0b85b\"/><path d=\"M -10 0 H 10 M 0 -10 V 10\" stroke=\"#e0b85b\"/><text x=\"9\" y=\"-9\" fill=\"#e8edf2\" font-family=\"sans-serif\" font-size=\"12\">" << xml_escape(entity.at("name").get<std::string>()) << "</text></g>\n";
+            svg << "<g data-entity-id=\"" << xml_escape(entity.at("id").get<std::string>()) << "\" data-entity-name=\"" << xml_escape(entity.at("name").get<std::string>()) << "\" data-x=\"" << x << "\" data-y=\"" << y << "\" data-rotation=\"" << rotation << "\" data-scale-x=\"" << sx << "\" data-scale-y=\"" << sy << "\" transform=\"translate(" << px << ' ' << py << ")\"><circle r=\"5\" fill=\"#e0b85b\"/><path d=\"M -10 0 H 10 M 0 -10 V 10\" stroke=\"#e0b85b\"/><text x=\"9\" y=\"-9\" fill=\"#e8edf2\" font-family=\"sans-serif\" font-size=\"12\">" << xml_escape(entity.at("name").get<std::string>()) << "</text></g>\n";
             continue;
         }
         const std::filesystem::path relative=entity.at("sprite").at("asset").get<std::string>();
@@ -160,7 +160,7 @@ ScenePreviewResult render_interactive_scene_preview_html(std::string_view projec
     std::filesystem::remove(source_path, ec);
     if (!source_read) return fail("PREVIEW_READ_FAILED", "Could not read the generated SVG preview.");
 
-    const std::string encoded_svg = base64(svg);
+
     std::ostringstream html;
     html << "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
          << "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -170,15 +170,15 @@ ScenePreviewResult render_interactive_scene_preview_html(std::string_view projec
          << "header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1a1f26;border-bottom:1px solid #343c47;flex-wrap:wrap}"
          << "strong{letter-spacing:.08em;margin-right:auto}button{background:#29313b;color:#e8edf2;border:1px solid #46515f;border-radius:6px;padding:7px 11px;cursor:pointer}"
          << "button:hover{background:#374250}#viewport{position:relative;overflow:hidden;touch-action:none;background:#11151a;cursor:grab}"
-         << "#viewport.dragging{cursor:grabbing}#scene{width:100%;height:100%;object-fit:contain;transform-origin:0 0;user-select:none;-webkit-user-drag:none}"
-         << "#help{position:absolute;bottom:12px;left:12px;background:#171b20dd;color:#b8c2ce;padding:7px 10px;border-radius:5px;pointer-events:none}"
+         << "main{min-height:0}#workspace{display:grid;grid-template-columns:240px minmax(0,1fr);height:100%;min-height:0}"
+         << "#sidebar{overflow:auto;background:#171b20;border-right:1px solid #343c47;padding:12px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#aab5c2;margin:4px 0 10px}#hierarchy{display:grid;gap:4px}#hierarchy button{text-align:left;overflow-wrap:anywhere}#hierarchy button.selected{border-color:#e0b85b;background:#3b3322}#inspector{margin-top:22px;border-top:1px solid #343c47;padding-top:12px}dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}dt{color:#8f9baa}dd{margin:0;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}#empty{color:#8f9baa;line-height:1.5}#viewport{position:relative;overflow:hidden;touch-action:none;background:#11151a;cursor:grab}#viewport.dragging{cursor:grabbing}#scene{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;user-select:none}#scene svg{display:block;width:100%;height:100%;overflow:visible}[data-entity-id]{cursor:pointer;outline:none}[data-entity-id].selected{filter:drop-shadow(0 0 5px #e0b85b)}#help{position:absolute;bottom:12px;left:12px;background:#171b20dd;color:#b8c2ce;padding:7px 10px;border-radius:5px;pointer-events:none}@media(max-width:650px){#workspace{grid-template-columns:155px minmax(0,1fr)}#sidebar{padding:8px}header{gap:5px;padding:8px}header strong{width:100%}}"
          << "</style></head><body><header><strong>KOR MOTORFORGE / INTERACTIVE SCENE VIEWER</strong>"
          << "<button id=\"minus\" aria-label=\"Zoom out\">−</button><button id=\"plus\" aria-label=\"Zoom in\">+</button>"
          << "<button id=\"reset\">Reset view</button><span id=\"zoom\">100%</span></header>"
-         << "<main id=\"viewport\" aria-label=\"Interactive scene preview\"><img id=\"scene\" draggable=\"false\" alt=\"Static scene preview\">"
-         << "<div id=\"help\">Wheel: zoom · Drag: pan · 0: reset · +/−: zoom</div></main>"
+         << "<main id=\"workspace\"><aside id=\"sidebar\"><h2>Scene hierarchy</h2><div id=\"hierarchy\"></div><section id=\"inspector\"><h2>Entity inspector</h2><div id=\"details\"><p id=\"empty\">Select an entity in the hierarchy or scene to inspect its properties.</p></div></section></aside><section id=\"viewport\" aria-label=\"Interactive scene preview\"><div id=\"scene\">" << svg << "</div>"
+         << "<div id=\"help\">Select: click entity · Wheel: zoom · Drag: pan · 0: reset · +/−: zoom</div></section></main>"
          << "<script>(()=>{const v=document.getElementById('viewport'),i=document.getElementById('scene'),z=document.getElementById('zoom');"
-         << "i.src='data:image/svg+xml;base64," << encoded_svg << "';let scale=1,x=0,y=0,drag=null;"
+         << "let scale=1,x=0,y=0,drag=null;const h=document.getElementById('hierarchy'),d=document.getElementById('details');"
          << "function paint(){i.style.transform='translate('+x+'px,'+y+'px) scale('+scale+')';z.textContent=Math.round(scale*100)+'%'}"
          << "function zoomAt(f,cx=v.clientWidth/2,cy=v.clientHeight/2){const next=Math.max(.2,Math.min(8,scale*f));const k=next/scale;x=cx-(cx-x)*k;y=cy-(cy-y)*k;scale=next;paint()}"
          << "function reset(){scale=1;x=0;y=0;paint()}document.getElementById('plus').onclick=()=>zoomAt(1.2);"
@@ -187,7 +187,7 @@ ScenePreviewResult render_interactive_scene_preview_html(std::string_view projec
          << "v.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={x:e.clientX-x,y:e.clientY-y,id:e.pointerId};v.setPointerCapture(e.pointerId);v.classList.add('dragging')});"
          << "v.addEventListener('pointermove',e=>{if(!drag)return;x=e.clientX-drag.x;y=e.clientY-drag.y;paint()});"
          << "function end(){drag=null;v.classList.remove('dragging')}v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end);"
-         << "window.addEventListener('keydown',e=>{if(e.key==='0')reset();else if(e.key==='+'||e.key==='=')zoomAt(1.2);else if(e.key==='-')zoomAt(1/1.2)});paint()})();</script></body></html>\n";
+         << "function select(el){document.querySelectorAll('[data-entity-id]').forEach(n=>n.classList.toggle('selected',n===el));h.querySelectorAll('button').forEach(n=>n.classList.toggle('selected',n.dataset.id===el.dataset.entityId));d.replaceChildren();const title=document.createElement('p');title.textContent=el.dataset.entityName;d.appendChild(title);const dl=document.createElement('dl');for(const [label,key] of [['ID','entityId'],['Position X','x'],['Position Y','y'],['Rotation','rotation'],['Scale X','scaleX'],['Scale Y','scaleY']]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=el.dataset[key]??'—';dl.append(dt,dd)}d.appendChild(dl)}const entities=[...document.querySelectorAll('#scene [data-entity-id]')];entities.forEach(el=>{const button=document.createElement('button');button.type='button';button.textContent=el.dataset.entityName||el.dataset.entityId;button.dataset.id=el.dataset.entityId;button.onclick=()=>select(el);h.appendChild(button);el.addEventListener('click',e=>{e.stopPropagation();select(el)})});window.addEventListener('keydown',e=>{if(e.target.closest('button,input,textarea,select'))return;if(e.key==='0')reset();else if(e.key==='+'||e.key==='=')zoomAt(1.2);else if(e.key==='-')zoomAt(1/1.2)});paint()})();</script></body></html>\n";
 
     auto temporary = destination;
     temporary += ".motorforge-tmp";
