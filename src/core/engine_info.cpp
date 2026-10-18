@@ -49,6 +49,13 @@ std::string_view capabilities_json() noexcept {
       "description": "Validate core project manifest invariants and return structured diagnostics.",
       "mutates_state": false,
       "status": "implemented"
+    },
+    {
+      "name": "init",
+      "invocation": "motorforge init <new-directory> --name <name> [--id <id>] --json",
+      "description": "Create a new project manifest without overwriting an existing destination.",
+      "mutates_state": true,
+      "status": "implemented"
     }
   ]
 })json";
