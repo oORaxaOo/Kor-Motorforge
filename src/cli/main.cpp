@@ -1,519 +1,123 @@
-#include "core/engine_info.hpp"
-#include "core/project_creator.hpp"
-#include "core/project_validator.hpp"
-#include "core/procedural_sprite.hpp"
-#include "core/scene_store.hpp"
-#include "core/runtime.hpp"
-#include "core/scene_preview.hpp"
+cmake_minimum_required(VERSION 3.20)
 
-#include <charconv>
-#include <cmath>
-#include <cstdint>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <system_error>
+project(KorMotorforge
+    VERSION 0.1.0
+    DESCRIPTION "An LLM-first modular game engine"
+    LANGUAGES CXX
+)
 
-namespace {
+include(CTest)
+include(FetchContent)
+include(GNUInstallDirs)
 
-void print_help() {
-    std::cout
-        << "Kor Motorforge " << motorforge::version() << "\n"
-        << "An LLM-first, modular game engine.\n\n"
-        << "Usage:\n"
-        << "  motorforge --help\n"
-        << "  motorforge --version\n"
-        << "  motorforge capabilities --json\n"
-        << "  motorforge validate <project-directory-or-project.json> [--json]\n"
-        << "  motorforge init <new-directory> --name <name> [--id <id>] [--json]\n"
-        << "  motorforge spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] [--json]\n"
-        << "  motorforge scene list <project> [--json]\n"
-        << "  motorforge scene create <project> --name <name> [--id <id>] [--json]\n"
-        << "  motorforge scene inspect <project> <scene-id> [--json]\n"
-        << "  motorforge scene patch <project> <scene-id> --patch <file.json> --expected-revision <revision> [--dry-run] [--json]\n"
-        << "  motorforge runtime inspect <project> <scene-id> [--json]\n"
-        << "  motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]\n"
-        << "  motorforge entity create <project> <scene-id> --id <id> --name <name> --expected-revision <revision> [--x <number>] [--y <number>] [--sprite <asset>] [--json]\n"
-        << "  motorforge entity update <project> <scene-id> --id <id> --name <name> --expected-revision <revision> --x <number> --y <number> [--json]\n"
-        << "  motorforge entity delete <project> <scene-id> --id <id> --expected-revision <revision> [--json]\n\n"
-        << "The CLI contract is version " << motorforge::contract_version() << ".\n";
-}
+find_package(ZLIB REQUIRED)
 
-void print_version() {
-    std::cout
-        << "Kor Motorforge " << motorforge::version()
-        << " (tool contract " << motorforge::contract_version() << ")\n";
-}
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.12.0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
-void print_create_errors(const motorforge::CreateProjectResult& result) {
-    for (std::size_t index = 0; index < result.error_codes.size(); ++index) {
-        std::cerr << "error[" << result.error_codes[index] << "]: "
-                  << result.messages[index] << '\n';
-    }
-}
+add_library(motorforge_core
+    src/core/engine_info.cpp
+    src/core/project_validator.cpp
+    src/core/project_creator.cpp
+    src/core/procedural_sprite.cpp
+    src/core/scene_store.cpp
+    src/core/runtime.cpp
+    src/core/scene_preview.cpp
+    src/core/asset.cpp
+)
+add_library(KorMotorforge::Core ALIAS motorforge_core)
 
-template <typename Integer>
-bool parse_integer(std::string_view text, Integer& value) {
-    const auto* begin = text.data();
-    const auto* end = text.data() + text.size();
-    const auto result = std::from_chars(begin, end, value);
-    return result.ec == std::errc{} && result.ptr == end;
-}
+target_compile_features(motorforge_core PUBLIC cxx_std_20)
+target_include_directories(motorforge_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(motorforge_core PUBLIC nlohmann_json::nlohmann_json ZLIB::ZLIB)
+target_compile_definitions(motorforge_core
+    PUBLIC MOTORFORGE_VERSION="${PROJECT_VERSION}"
+)
 
-bool parse_number(std::string_view text, double& value) {
-    const auto* begin = text.data();
-    const auto* end = text.data() + text.size();
-    const auto result = std::from_chars(begin, end, value);
-    return result.ec == std::errc{} && result.ptr == end && std::isfinite(value);
-}
+if(MSVC)
+    target_compile_options(motorforge_core PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(motorforge_core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
-int report_scene_result(const motorforge::SceneCommandResult& result, bool json_output) {
-    if (json_output) {
-        std::cout << result.json << '\n';
-    } else if (result.ok) {
-        std::cout << result.message << '\n';
-        if (!result.revision.empty()) {
-            std::cout << "revision: " << result.revision << '\n';
-        }
-    } else {
-        std::cerr << "error: " << result.message << '\n';
-    }
-    return result.ok ? 0 : 1;
-}
+add_executable(motorforge
+    src/cli/main.cpp
+)
+target_link_libraries(motorforge PRIVATE KorMotorforge::Core)
 
-} // namespace
+if(BUILD_TESTING)
+    add_executable(motorforge_tests
+        tests/test_engine_info.cpp
+    )
+    target_link_libraries(motorforge_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_core_contract COMMAND motorforge_tests)
 
-int main(int argc, char* argv[]) {
-    if (argc == 1 || std::string_view{argv[1]} == "--help" ||
-        std::string_view{argv[1]} == "-h") {
-        print_help();
-        return 0;
-    }
+    add_executable(motorforge_project_validator_tests
+        tests/test_project_validator.cpp
+    )
+    target_link_libraries(motorforge_project_validator_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_project_validator COMMAND motorforge_project_validator_tests)
 
-    const std::string_view command{argv[1]};
+    add_executable(motorforge_project_creator_tests
+        tests/test_project_creator.cpp
+    )
+    target_link_libraries(motorforge_project_creator_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_project_creator COMMAND motorforge_project_creator_tests)
 
-    if (command == "--version" || command == "-V") {
-        print_version();
-        return 0;
-    }
+    add_executable(motorforge_procedural_sprite_tests
+        tests/test_procedural_sprite.cpp
+    )
+    target_link_libraries(motorforge_procedural_sprite_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_procedural_sprite COMMAND motorforge_procedural_sprite_tests)
 
-    if (command == "capabilities") {
-        if (argc >= 3 && std::string_view{argv[2]} == "--json") {
-            std::cout << motorforge::capabilities_json() << '\n';
-            return 0;
-        }
+    add_executable(motorforge_scene_store_tests
+        tests/test_scene_store.cpp
+    )
+    target_link_libraries(motorforge_scene_store_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_scene_store COMMAND motorforge_scene_store_tests)
 
-        std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge capabilities --json'\n";
-        return 2;
-    }
+    add_executable(motorforge_runtime_tests
+        tests/test_runtime.cpp
+    )
+    target_link_libraries(motorforge_runtime_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_runtime COMMAND motorforge_runtime_tests)
 
-    if (command == "validate") {
-        if (argc < 3) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge validate <project-path> [--json]'\n";
-            return 2;
-        }
+    add_executable(motorforge_asset_pipeline_tests
+        tests/test_asset_pipeline.cpp
+    )
+    target_link_libraries(motorforge_asset_pipeline_tests PRIVATE KorMotorforge::Core)
+    add_test(NAME motorforge_asset_pipeline COMMAND motorforge_asset_pipeline_tests)
 
-        const auto result = motorforge::validate_project(argv[2]);
-        const bool json_output = argc >= 4 && std::string_view{argv[3]} == "--json";
+    add_test(NAME motorforge_cli_help COMMAND motorforge --help)
+    add_test(NAME motorforge_cli_version COMMAND motorforge --version)
+    add_test(NAME motorforge_cli_capabilities COMMAND motorforge capabilities --json)
+    add_test(
+        NAME motorforge_example_project
+        COMMAND motorforge validate ${CMAKE_CURRENT_SOURCE_DIR}/examples/empty-project --json
+    )
 
-        if (json_output) {
-            std::cout << motorforge::validation_result_json(result) << '\n';
-        } else if (result.ok) {
-            std::cout << "Project valid: " << result.project_name
-                      << " [" << result.project_id << "]\n";
-        } else {
-            for (const auto& diagnostic : result.diagnostics) {
-                std::cerr << "error[" << diagnostic.code << "]: "
-                          << diagnostic.message;
-                if (!diagnostic.location.empty()) {
-                    std::cerr << " (" << diagnostic.location << ')';
-                }
-                std::cerr << '\n';
-            }
-        }
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME motorforge_mcp_adapter
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mcp_server.py
+                    --motorforge $<TARGET_FILE:motorforge>
+        )
+    endif()
+endif()
 
-        return result.ok ? 0 : 1;
-    }
-
-    if (command == "init") {
-        if (argc < 3) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge init <new-directory> --name <name> [--id <id>] [--json]'\n";
-            return 2;
-        }
-
-        const std::string destination{argv[2]};
-        std::string name;
-        std::string id;
-        bool json_output = false;
-
-        for (int index = 3; index < argc; ++index) {
-            const std::string_view option{argv[index]};
-            if (option == "--json") {
-                json_output = true;
-            } else if (option == "--name" && index + 1 < argc) {
-                name = argv[++index];
-            } else if (option == "--id" && index + 1 < argc) {
-                id = argv[++index];
-            } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '"
-                          << option << "'\n";
-                return 2;
-            }
-        }
-
-        const auto result = motorforge::create_project(destination, name, id);
-        if (json_output) {
-            std::cout << motorforge::create_project_result_json(result) << '\n';
-        } else if (result.ok) {
-            std::cout << "Created project: " << result.project_name
-                      << " [" << result.project_id << "] at "
-                      << result.project_path.generic_string() << '\n';
-        } else {
-            print_create_errors(result);
-        }
-
-        return result.ok ? 0 : 1;
-    }
-
-    if (command == "scene") {
-        if (argc < 4) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge scene <list|create|inspect|patch> <project> ...'\n";
-            return 2;
-        }
-
-        const std::string_view action{argv[2]};
-        const std::string project{argv[3]};
-        bool json_output = false;
-        motorforge::SceneCommandResult result;
-
-        if (action == "list") {
-            for (int index = 4; index < argc; ++index) {
-                if (std::string_view{argv[index]} == "--json") {
-                    json_output = true;
-                } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\n";
-                    return 2;
-                }
-            }
-            result = motorforge::list_scenes(project);
-        } else if (action == "create") {
-            std::string name;
-            std::string id;
-            for (int index = 4; index < argc; ++index) {
-                const std::string_view option{argv[index]};
-                if (option == "--json") {
-                    json_output = true;
-                } else if (option == "--name" && index + 1 < argc) {
-                    name = argv[++index];
-                } else if (option == "--id" && index + 1 < argc) {
-                    id = argv[++index];
-                } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
-                    return 2;
-                }
-            }
-            result = motorforge::create_scene(project, name, id);
-        } else if (action == "patch") {
-            if (argc < 5) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: scene patch requires a scene ID and patch file.\n";
-                return 2;
-            }
-            const std::string scene_id{argv[4]};
-            std::string patch_path;
-            std::string expected_revision;
-            bool dry_run = false;
-            for (int index = 5; index < argc; ++index) {
-                const std::string_view option{argv[index]};
-                if (option == "--json") json_output = true;
-                else if (option == "--dry-run") dry_run = true;
-                else if (option == "--patch" && index + 1 < argc) patch_path = argv[++index];
-                else if (option == "--expected-revision" && index + 1 < argc) expected_revision = argv[++index];
-                else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete scene patch option '" << option << "'\n";
-                    return 2;
-                }
-            }
-            if (patch_path.empty() || expected_revision.empty()) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: --patch and --expected-revision are required.\n";
-                return 2;
-            }
-            std::ifstream patch_file{patch_path, std::ios::binary};
-            if (!patch_file) {
-                std::cerr << "error[PATCH_FILE_READ_FAILED]: could not open patch file.\n";
-                return 2;
-            }
-            std::ostringstream patch_buffer;
-            patch_buffer << patch_file.rdbuf();
-            if (patch_file.bad() || patch_buffer.str().size() > 1024 * 1024) {
-                std::cerr << "error[PATCH_FILE_READ_FAILED]: patch file could not be read or exceeds 1 MiB.\n";
-                return 2;
-            }
-            result = motorforge::apply_scene_patch(project, scene_id, patch_buffer.str(),
-                                                    expected_revision, dry_run);
-        } else if (action == "inspect") {
-            if (argc < 5) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: scene inspect requires a scene ID.\n";
-                return 2;
-            }
-            const std::string scene_id{argv[4]};
-            for (int index = 5; index < argc; ++index) {
-                if (std::string_view{argv[index]} == "--json") {
-                    json_output = true;
-                } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown option '" << argv[index] << "'\n";
-                    return 2;
-                }
-            }
-            result = motorforge::inspect_scene(project, scene_id);
-        } else {
-            std::cerr << "error[UNKNOWN_SCENE_ACTION]: unknown scene action '" << action << "'.\n";
-            return 2;
-        }
-        return report_scene_result(result, json_output);
-    }
-
-    if (command == "runtime") {
-        if (argc < 5 || std::string_view{argv[2]} != "inspect") {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge runtime inspect <project> <scene-id> [--json]'\n";
-            return 2;
-        }
-        const bool json_output = argc == 6 && std::string_view{argv[5]} == "--json";
-        if (argc > 6 || (argc == 6 && !json_output)) {
-            std::cerr << "error[INVALID_ARGUMENT]: unexpected runtime inspect argument\n";
-            return 2;
-        }
-        const auto result = motorforge::inspect_runtime(argv[3], argv[4]);
-        return report_scene_result({result.ok, result.message, result.json, {}}, json_output);
-    }
-
-    if (command == "preview" && argc >= 3 && std::string_view{argv[2]} == "interactive") {
-        if (argc < 7) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge preview interactive <project> <scene-id> --output <file.html> [--width <320..4096>] [--height <240..4096>] [--json]'\n";
-            return 2;
-        }
-        std::string output;
-        int width = 1280, height = 720;
-        bool json_output = false;
-        for (int index = 5; index < argc; ++index) {
-            const std::string_view option{argv[index]};
-            if (option == "--json") json_output = true;
-            else if (option == "--output" && index + 1 < argc) output = argv[++index];
-            else if (option == "--width" && index + 1 < argc) {
-                if (!parse_integer(std::string_view{argv[++index]}, width)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: width must be an integer.\n"; return 2;
-                }
-            } else if (option == "--height" && index + 1 < argc) {
-                if (!parse_integer(std::string_view{argv[++index]}, height)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: height must be an integer.\n"; return 2;
-                }
-            } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete preview option '" << option << "'\n";
-                return 2;
-            }
-        }
-        const auto result = motorforge::render_interactive_scene_preview_html(argv[3], argv[4], output, width, height);
-        if (json_output) std::cout << result.json << '\n';
-        else if (result.ok) std::cout << result.message << " Output: " << output << '\n';
-        else std::cerr << result.message << '\n';
-        return result.ok ? 0 : 1;
-    }
-
-    if (command == "preview") {
-        if (argc < 7 || std::string_view{argv[2]} != "render") {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge preview render <project> <scene-id> --output <file.svg> [--width <320..4096>] [--height <240..4096>] [--json]'\n";
-            return 2;
-        }
-        std::string output;
-        int width = 1280, height = 720;
-        bool json_output = false;
-        for (int index = 5; index < argc; ++index) {
-            const std::string_view option{argv[index]};
-            if (option == "--json") json_output = true;
-            else if (option == "--output" && index + 1 < argc) output = argv[++index];
-            else if (option == "--width" && index + 1 < argc) {
-                if (!parse_integer(std::string_view{argv[++index]}, width)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: width must be an integer.\n"; return 2;
-                }
-            } else if (option == "--height" && index + 1 < argc) {
-                if (!parse_integer(std::string_view{argv[++index]}, height)) {
-                    std::cerr << "error[INVALID_PREVIEW_SIZE]: height must be an integer.\n"; return 2;
-                }
-            } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete preview option '" << option << "'\n";
-                return 2;
-            }
-        }
-        const auto result = motorforge::render_scene_preview_svg(argv[3], argv[4], output, width, height);
-        if (json_output) std::cout << result.json << '\n';
-        else if (result.ok) std::cout << result.message << " Output: " << output << '\n';
-        else std::cerr << result.message << '\n';
-        return result.ok ? 0 : 1;
-    }
-
-    if (command == "entity") {
-        if (argc < 5) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge entity <create|update|delete> <project> <scene-id> ...'.\n";
-            return 2;
-        }
-
-        const std::string project{argv[3]};
-        const std::string scene_id{argv[4]};
-        const std::string_view entity_action{argv[2]};
-        if (entity_action == "update" || entity_action == "delete") {
-            std::string id;
-            std::string name;
-            std::string expected_revision;
-            double x = 0.0;
-            double y = 0.0;
-            bool has_x = false;
-            bool has_y = false;
-            bool json_output = false;
-            for (int index = 5; index < argc; ++index) {
-                const std::string_view option{argv[index]};
-                if (option == "--json") {
-                    json_output = true;
-                } else if (option == "--id" && index + 1 < argc) {
-                    id = argv[++index];
-                } else if (option == "--name" && index + 1 < argc) {
-                    name = argv[++index];
-                } else if (option == "--expected-revision" && index + 1 < argc) {
-                    expected_revision = argv[++index];
-                } else if (option == "--x" && index + 1 < argc) {
-                    if (!parse_number(argv[++index], x)) {
-                        std::cerr << "error[INVALID_TRANSFORM]: x must be a finite number.\n";
-                        return 2;
-                    }
-                    has_x = true;
-                } else if (option == "--y" && index + 1 < argc) {
-                    if (!parse_number(argv[++index], y)) {
-                        std::cerr << "error[INVALID_TRANSFORM]: y must be a finite number.\n";
-                        return 2;
-                    }
-                    has_y = true;
-                } else {
-                    std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
-                    return 2;
-                }
-            }
-            if (id.empty() || expected_revision.empty()) {
-                std::cerr << "error[ARGUMENT_REQUIRED]: --id and --expected-revision are required.\n";
-                return 2;
-            }
-            if (entity_action == "update") {
-                if (name.empty() || !has_x || !has_y) {
-                    std::cerr << "error[ARGUMENT_REQUIRED]: entity update requires --name, --x, and --y.\n";
-                    return 2;
-                }
-                return report_scene_result(
-                    motorforge::update_entity(project, scene_id, id, name, x, y, expected_revision),
-                    json_output);
-            }
-            if (!name.empty() || has_x || has_y) {
-                std::cerr << "error[INVALID_ARGUMENT]: entity delete accepts only --id, --expected-revision, and --json.\n";
-                return 2;
-            }
-            return report_scene_result(
-                motorforge::delete_entity(project, scene_id, id, expected_revision), json_output);
-        }
-        if (entity_action != "create") {
-            std::cerr << "error[UNKNOWN_ENTITY_ACTION]: unknown entity action '" << entity_action << "'.\n";
-            return 2;
-        }
-        std::string id;
-        std::string name;
-        std::string sprite;
-        std::string expected_revision;
-        double x = 0.0;
-        double y = 0.0;
-        bool json_output = false;
-
-        for (int index = 5; index < argc; ++index) {
-            const std::string_view option{argv[index]};
-            if (option == "--json") {
-                json_output = true;
-            } else if (option == "--id" && index + 1 < argc) {
-                id = argv[++index];
-            } else if (option == "--name" && index + 1 < argc) {
-                name = argv[++index];
-            } else if (option == "--expected-revision" && index + 1 < argc) {
-                expected_revision = argv[++index];
-            } else if (option == "--sprite" && index + 1 < argc) {
-                sprite = argv[++index];
-            } else if (option == "--x" && index + 1 < argc) {
-                if (!parse_number(argv[++index], x)) {
-                    std::cerr << "error[INVALID_TRANSFORM]: x must be a finite number.\n";
-                    return 2;
-                }
-            } else if (option == "--y" && index + 1 < argc) {
-                if (!parse_number(argv[++index], y)) {
-                    std::cerr << "error[INVALID_TRANSFORM]: y must be a finite number.\n";
-                    return 2;
-                }
-            } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '" << option << "'\n";
-                return 2;
-            }
-        }
-
-        const auto result = motorforge::create_entity(
-            project, scene_id, id, name, x, y, sprite, expected_revision);
-        return report_scene_result(result, json_output);
-    }
-
-    if (command == "spritegen") {
-        if (argc < 3) {
-            std::cerr << "error[ARGUMENT_REQUIRED]: use 'motorforge spritegen <output.svg> [--type industrial-building] [--seed <uint32>] [--size <16..1024>] [--json]'\n";
-            return 2;
-        }
-
-        const std::string output_path{argv[2]};
-        std::string type{"industrial-building"};
-        std::uint32_t seed{1};
-        int size{64};
-        bool json_output = false;
-
-        for (int index = 3; index < argc; ++index) {
-            const std::string_view option{argv[index]};
-            if (option == "--json") {
-                json_output = true;
-            } else if (option == "--type" && index + 1 < argc) {
-                type = argv[++index];
-            } else if (option == "--seed" && index + 1 < argc) {
-                if (!parse_integer<std::uint32_t>(argv[++index], seed)) {
-                    std::cerr << "error[INVALID_SEED]: seed must be an unsigned 32-bit integer.\n";
-                    return 2;
-                }
-            } else if (option == "--size" && index + 1 < argc) {
-                if (!parse_integer<int>(argv[++index], size)) {
-                    std::cerr << "error[INVALID_SPRITE_SIZE]: size must be an integer.\n";
-                    return 2;
-                }
-            } else {
-                std::cerr << "error[INVALID_ARGUMENT]: unknown or incomplete option '"
-                          << option << "'\n";
-                return 2;
-            }
-        }
-
-        const auto result = motorforge::write_procedural_sprite(output_path, type, seed, size);
-        if (json_output) {
-            std::cout << motorforge::sprite_generation_result_json(result) << '\n';
-        } else if (result.ok) {
-            std::cout << "Generated procedural sprite: "
-                      << result.output_path.generic_string() << '\n';
-        } else {
-            for (std::size_t index = 0; index < result.error_codes.size(); ++index) {
-                std::cerr << "error[" << result.error_codes[index] << "]: "
-                          << result.messages[index] << '\n';
-            }
-        }
-
-        return result.ok ? 0 : 1;
-    }
-
-    std::cerr << "error[UNKNOWN_COMMAND]: unknown command '" << command
-              << "'. Run 'motorforge --help'.\n";
-    return 2;
-}
+install(TARGETS motorforge
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
