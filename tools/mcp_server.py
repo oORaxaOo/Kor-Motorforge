@@ -140,6 +140,19 @@ TOOLS: list[dict[str, Any]] = [
         }
     },
     {
+        "name": "runtime_inspect",
+        "description": "Load a scene in headless mode, validate runtime transforms, and resolve sprite assets without opening a window.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "minLength": 1},
+                "scene_id": {"type": "string", "minLength": 1}
+            },
+            "required": ["project_path", "scene_id"],
+            "additionalProperties": False
+        }
+    },
+    {
         "name": "entity_delete",
         "description": "Delete an entity using the latest scene revision token.",
         "inputSchema": {
@@ -288,6 +301,16 @@ def call_tool(name: str, arguments: Any, executable: Path,
                 "entity", "delete", str(project_path), scene_id, "--id", entity_id,
                 "--expected-revision", revision, "--json",
             ])
+    elif name == "runtime_inspect":
+        if set(arguments) != {"project_path", "scene_id"}:
+            raise ToolFailure("INVALID_ARGUMENTS", "runtime_inspect requires project_path and scene_id.")
+        project_path = resolve_workspace_path(arguments["project_path"], workspace, allow_external)
+        scene_id = arguments["scene_id"]
+        if not isinstance(scene_id, str) or not scene_id:
+            raise ToolFailure("INVALID_SCENE_ID", "scene_id must be a non-empty string.")
+        return_code, output = invoke_motorforge(
+            executable, ["runtime", "inspect", str(project_path), scene_id, "--json"]
+        )
     elif name in {"scene_list", "scene_create", "scene_inspect", "entity_create"}:
         project_path = resolve_workspace_path(arguments.get("project_path"), workspace, allow_external)
         if name == "scene_list":
